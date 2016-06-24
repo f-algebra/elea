@@ -1,0 +1,56 @@
+
+data True;
+data False;
+
+data 0;
+data Suc *;
+
+data Nil;
+data Cons _ *;
+
+let 1 = Suc 0 ;
+let 2 = Suc 1 ;
+
+let Add = fix add x y -> case x | 0 -> y | Suc x' -> Suc (add x' y) end ;
+let Mul = fix mul x y -> case x | 0 -> 1 | Suc x' -> Add y (mul x' y) end ;
+
+let Lt = fix lt x y ->
+    case x
+    | 0 ->
+        case y
+        | 0 -> False
+        | Suc y -> True
+        end
+    | Suc x ->
+        case y
+        | 0 -> False
+        | Suc y -> lt x y
+        end
+    end ;
+
+let LtEq = fix lteq x y ->
+    case x
+    | 0 -> True
+    | Suc x ->
+        case y
+        | 0 -> False
+        | Suc y -> lteq x y
+        end
+    end ;
+
+let Append = fix app xs ys ->
+    case xs
+    | Nil -> ys
+    | Cons x xs' -> Cons x (app xs' ys)
+    end ;
+
+let Snoc = fn y -> fix snoc xs -> case xs
+    | Nil -> Cons y Nil
+    | Cons x xs' -> Cons x (snoc xs')
+    end ;
+
+let Reverse = fix rev xs ->
+    case xs
+    | Nil -> Nil
+    | Cons x xs' -> Append (rev xs') (Cons x Nil)
+    end ;

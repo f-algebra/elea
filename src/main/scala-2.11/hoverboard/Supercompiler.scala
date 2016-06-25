@@ -1,38 +1,48 @@
 package hoverboard
 
 import hoverboard.term._
+
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 
 object Supercompiler {
-  def ripple(skeleton: Term, goal: Term): Option[(Term, Substitution)] =
-    skeleton match {
-//      case skeleton: App =>
-//        goal match {
-//            // Coupling step
-//          case goalFun: Fix if skeletonFun.index == goalFun.index =>
-//
-//        }
 
+  final def ripple(skeleton: Term, goal: Term): Option[(Term, Substitution)] =
+    (skeleton, goal) match {
+      case (AppView(skelFun: Fix, skelArgs), AppView(goalFun: Fix, goalArgs)) =>
+        // Coupling step
+        if (skelFun.index == goalFun.index) {
+          require(skelArgs.length == goalArgs.length, s"Should have equal argument counts: $skeleton vs. $goal")
+          val rippledArgs = skelArgs.fzipWith(goalArgs)(ripple)
+          if (rippledArgs.any(_.isEmpty))
+            None
+          else {
+            None
+          }
+        }
+        // Diving step
+        else {
+          None
+        }
       case _ =>
-        None  // Probably an assertion error
+        None // Probably an assertion error
     }
 
-  def unfold(term: App): Term = {
+  final def unfold(term: Term): Term = {
     // Should be used like, while !terms.any(_ embedsInto x) x = x.unfold
-    term.fun match {
-      case fix: Fix =>
+    term match {
+      case AppView(fix: Fix, args) =>
         val strictArgs = fix.strictArgs.filter { i =>
-          term.args.list.index(i) match {
-            case Some(App(f, _)) => f.isInstanceOf[Fix]
+          args.index(i) match {
+            case Some(AppView(f: Fix, _)) => true
             case _ => false
           }
         }
         if (strictArgs.isEmpty)
-          App(fix.unfold, term.args)
+          fix.unfold.apply(args)
         else {
-          val newArgs = strictArgs.foldl[IList[Term]](term.args.list) { args => n =>
-            args.setAt(n, unfold(args.index(n).get.asInstanceOf[App]))
+          val newArgs = strictArgs.foldl[IList[Term]](args) { args => n =>
+            args.setAt(n, unfold(args.index(n).get))
           }
           fix.apply(newArgs)
         }

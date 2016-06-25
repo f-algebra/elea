@@ -1,12 +1,21 @@
 package hoverboard
 
 import hoverboard.term.Term
+import org.scalactic.Equality
 import org.scalatest.enablers.{Emptiness, Containing}
 
 import scala.concurrent._
 import scalaz.ISet
 
 object Util {
+
+  implicit object TermAlphaEqModuloIndices extends Equality[Term] {
+    override def areEqual(a: Term, b: Any): Boolean =
+      b match {
+        case b: Term => a.removeIndices =@= b.removeIndices
+        case _ => false
+      }
+  }
 
   implicit object ContainsTerm extends Containing[ISet[Term]] {
     def contains(container: ISet[Term], element: Any): Boolean =

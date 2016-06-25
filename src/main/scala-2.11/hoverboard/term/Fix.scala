@@ -8,7 +8,7 @@ import scalaz.{Name => _, _}
 import Scalaz._
 
 case class Fix(body: Lam,
-               index: Name,
+               index: Fix.Index,
                name: Option[String] = None,
                driven: Boolean = false)
   extends Term with FirstOrder[Term] {
@@ -127,7 +127,7 @@ case class Fix(body: Lam,
 
   override def zip(other: Term): Option[IList[(Term, Term)]] =
     other match {
-      case other: Fix =>
+      case other: Fix if index == other.index =>
         Some(IList((body, other.body)))
       case _ =>
         None
@@ -182,4 +182,13 @@ case class Fix(body: Lam,
   }
 
   override protected def getIndices = super.getIndices.insert(index)
+
+  override def removeIndices: Term =
+    copy(index = Fix.Omega).mapSubterms(_.removeIndices)
+}
+
+object Fix {
+  sealed abstract class Index
+  case object Omega extends Index
+  case class Finite(name: Name) extends Index
 }

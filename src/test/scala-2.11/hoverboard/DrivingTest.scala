@@ -5,12 +5,17 @@ import org.scalacheck.Arbitrary
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Matchers, FlatSpec}
 
+import scala.concurrent.{Await, Future, ExecutionContext}
+import scala.concurrent.duration._
+
 class DrivingTest extends FlatSpec with Matchers with PropertyChecks {
 
   import Util._
+  import ExecutionContext.Implicits._
 
   implicit val termArb = Arbitrary(Arbitraries.term)
   implicit val program: Program = Program.prelude
+
 
   "driving" should "perform beta reduction" in {
     t"(fn x -> x) y".drive shouldEqual t"y"

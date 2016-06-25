@@ -11,10 +11,15 @@ class SupercompilerTest extends FlatSpec with Matchers with PropertyChecks {
   implicit val program: Program = Program.prelude
 
   "unfold" should "correctly unfold strict fixed-points" in {
-    Supercompiler.unfold(t"Reverse (Reverse xs)".asInstanceOf[App]) shouldEqual
+    Supercompiler.unfold(t"Reverse (Reverse xs)") shouldEqual
       t"Reverse (unfold Reverse xs)"
-    Supercompiler.unfold(t"Lt (Add x y) (Add n m)".asInstanceOf[App]) shouldEqual
+    Supercompiler.unfold(t"Lt (Add x y) (Add n m)") shouldEqual
       t"Lt (unfold Add x y) (unfold Add n m)"
+  }
+
+  it should "unfold fixed-points without arguments" in {
+    Supercompiler.unfold(t"Ones") shouldEqual t"unfold Ones"
+    Supercompiler.unfold(t"Reverse Ones") shouldEqual t"Reverse (unfold Ones)"
   }
 
   "rippling" should "work for associativity of Add" in {

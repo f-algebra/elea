@@ -62,3 +62,14 @@ case class App(fun: Term, args: NonEmptyList[Term]) extends Term with FirstOrder
       args.distinct == args &&
       fun.freeVars.intersection(ISet.unions(args.map(_.freeVars).toList)).isEmpty
 }
+
+/**
+  * View any [[Term]] as term application, potentially of zero arguments
+  */
+object AppView {
+  def unapply(term: Term): Option[(Term, IList[Term])] =
+    term match {
+      case term: App => Some((term.fun, term.args.list))
+      case _ => Some((term, IList.empty[Term]))
+    }
+}

@@ -54,3 +54,5 @@ let Reverse = fix rev xs ->
     | Nil -> Nil
     | Cons x xs' -> Append (rev xs') (Cons x Nil)
     end ;
+
+let Ones = fix ones -> Cons 1 ones ;

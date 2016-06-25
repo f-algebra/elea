@@ -16,9 +16,9 @@ abstract class TermLike[This <: TermLike[This]] {
   protected def getFreeVars: ISet[Name] =
     ISet.unions(immediateSubtermsWithBindings.map { case (bs, t) => t.freeVars.difference(bs) }.toList)
 
-  lazy val indices: ISet[Name] = getIndices
+  lazy val indices: ISet[Fix.Index] = getIndices
 
-  protected def getIndices: ISet[Name] =
+  protected def getIndices: ISet[Fix.Index] =
     ISet.unions(immediateSubterms.map(_.indices).toList)
 
   /**
@@ -134,4 +134,11 @@ abstract class TermLike[This <: TermLike[This]] {
 
   override def hashCode: Int =
     throw new IllegalAccessException("Don't use hash based collections for term-like things please")
+
+  /**
+    * Set all fix indices to [[Fix.Omega]]. Useful if you want to check equality modulo fix indices.
+    * @return
+    */
+  def removeIndices: This =
+    mapSubterms(_.removeIndices)
 }

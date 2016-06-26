@@ -48,6 +48,8 @@ class DrivingTest extends FlatSpec with Matchers with PropertyChecks {
   }
 
   it should "be idempotent" in {
+    implicit val generatorDrivenConfig = PropertyCheckConfig(minSuccessful = 5)
+
     val historicalFails = Seq(
       t"Add 0 y",
       t"(fn x y -> case x | 0 -> Suc 0 | Suc x' -> Add y (Mul x' y) end) nat_1 (Suc (Suc (f nat_1)))")
@@ -55,7 +57,8 @@ class DrivingTest extends FlatSpec with Matchers with PropertyChecks {
       .foreach { t => t.drive shouldEqual t.drive.drive }
 
     forAll { (t: Term) =>
-      t.drive shouldEqual t.drive.drive
+      val driven = t.drive
+      driven shouldEqual driven.drive
     }
   }
 

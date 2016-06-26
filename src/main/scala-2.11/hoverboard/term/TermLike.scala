@@ -3,7 +3,7 @@ package hoverboard.term
 import hoverboard.Name
 
 import scalaz.Ordering.EQ
-import scalaz._
+import scalaz.{Name => _, _}
 import Scalaz._
 
 /**
@@ -85,6 +85,20 @@ abstract class TermLike[This <: TermLike[This]] {
   final def mapSubterms(f: Term => Term): This =
     mapImmediateSubterms(t => f(t.mapSubterms(f)))
 
+  final def withImmediateSubterms(terms: IList[Term]): This = {
+    require(terms.length == this.immediateSubterms.length)
+    var newSubterms = terms
+    mapImmediateSubterms(_ => {
+      newSubterms match {
+        case ICons(t, ts) =>
+          newSubterms = ts
+          t
+        case INil() =>
+          throw new AssertionError("Somehow _.mapSubterms touches fewer subterms than are in _.subterms")
+      }
+    })
+  }
+
   /**
     * All sub-terms containing all of the provided variables
     */
@@ -116,6 +130,9 @@ abstract class TermLike[This <: TermLike[This]] {
     */
   @inline
   def zip(other: This): Option[IList[(Term, Term)]]
+
+  final def zipWith[A](other: This)(f: (Term, Term) => A): Option[IList[A]] =
+    zip(other).map(_.map(f.tupled))
 
   /**
     * Whether this term-like is the same shape as the `other` and the subterms of this

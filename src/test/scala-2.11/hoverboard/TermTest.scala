@@ -1,6 +1,6 @@
 package hoverboard
 
-import hoverboard.term.{Fix, Lam, Term, Var, App}
+import hoverboard.term._
 import org.scalacheck.Arbitrary
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
@@ -165,5 +165,47 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks {
     t"Reverse".asInstanceOf[Fix].strictArgs shouldEqual IList(0)
     t"Append".asInstanceOf[Fix].strictArgs shouldEqual IList(0)
     t"Lt".asInstanceOf[Fix].strictArgs shouldEqual IList(0, 1)
+  }
+
+  def msgWithSanityCheck(t1: Term, t2: Term): (Term, Substitution, Substitution) = {
+    val (ctx, sub1, sub2) = t1 ⨅ t2
+    ctx :/ sub1 shouldEqual t1
+    ctx :/ sub2 shouldEqual t2
+    sub1.toMap.keySet shouldEqual sub2.toMap.keySet
+    (ctx, sub1, sub2)
+  }
+
+  "most specific generalisation" should "expose substitutions" in {
+    forAll { (ctx: Term, leftSubTerm: Term, rightSubTerm: Term) =>
+      whenever(!leftSubTerm.isInstanceOf[Var]) {
+        whenever(!rightSubTerm.isInstanceOf[Var]) {
+          // A lot of properties turn out not to hold if the two substitution terms are zippable
+          whenever(leftSubTerm.zip(rightSubTerm).isEmpty) {
+            ctx.freeVars.toList.foreach { subVar =>
+              val leftTerm = ctx :/ leftSubTerm / subVar
+              val rightTerm = ctx :/ rightSubTerm / subVar
+              val (msgCtx, leftSub, rightSub) = msgWithSanityCheck(leftTerm, rightTerm)
+              ISet.fromFoldable(leftSub.toMap.values) shouldEqual ISet.singleton(leftSubTerm)
+              ISet.fromFoldable(rightSub.toMap.values) shouldEqual ISet.singleton(rightSubTerm)
+              val uniOpt = msgCtx.unifyLeft(ctx)
+              uniOpt should be('isDefined)
+              val Some(ctxUni) = uniOpt
+              ISet.fromFoldable(ctxUni.toMap.values) shouldEqual ISet.singleton(Var(subVar))
+              leftSub.toMap.keySet shouldEqual ctxUni.boundVars
+              rightSub.toMap.keySet shouldEqual ctxUni.boundVars
+            }
+          }
+        }
+      }
+    }
+  }
+
+  it should "do nothing for equal terms" in {
+    forAll { (t: Term) =>
+      val (ctx, sub1, sub2) = msgWithSanityCheck(t, t)
+      sub1.isEmpty shouldBe true
+      sub2.isEmpty shouldBe true
+      ctx shouldEqual t
+    }
   }
 }

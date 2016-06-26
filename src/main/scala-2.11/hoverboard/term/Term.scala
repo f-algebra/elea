@@ -1,9 +1,10 @@
 package hoverboard.term
 
+import hoverboard._
 import hoverboard.Name
 import hoverboard.rewrite.Env
 
-import scalaz._
+import scalaz.{Name => _, _}
 import Scalaz._
 
 // TODO: Since terms are immutable, could we get faster equality by first checking reference equality?
@@ -131,4 +132,18 @@ abstract class Term extends TermLike[Term] {
 
   final def strictlyEmbedsInto(other: Term): Boolean =
     this.embedsInto(other) && !other.embedsInto(this)
+
+  final def ⨅(other: Term): (Term, Substitution, Substitution) =
+    zipWith(other)(_ ⨅ _) match {
+      case None =>
+        val newVar = Name.fresh("γ")
+        (Var(newVar), this / newVar, other / newVar)
+      case Some(msgs) =>
+        val (subterms, thisSubs, otherSubs) = msgs.unzip3
+        // If this union has failed then the fresh variable creator is broken
+        // since all of these substitutions should have disjoint domains
+        val Some(thisSub) = Substitution.union(thisSubs)
+        val Some(otherSub) = Substitution.union(otherSubs)
+        (this.withImmediateSubterms(subterms), thisSub, otherSub)
+    }
 }

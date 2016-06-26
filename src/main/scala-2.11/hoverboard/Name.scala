@@ -31,5 +31,7 @@ object Name {
 
   implicit def stringToName(name: String): Name = Name(name)
 
-  def freshIndex: Fix.Index = Fix.Finite(Name("α").freshen)
+  def freshIndex: Fix.Index = Fix.Finite(fresh("α"))
+
+  def fresh(baseName: String): Name = Name(baseName)freshen
 }

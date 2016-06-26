@@ -34,6 +34,15 @@ package object hoverboard {
       val (left, right) = list.splitAt(n)
       left ++ (elem :: right.tailOption.getOrElse(INil[A]()))
     }
+
+    def unzip3[B, C, D](implicit ev: A <:< (B, C, D)): (IList[B], IList[C], IList[D]) =
+      list match {
+        case INil() =>
+          (INil(), INil(), INil())
+        case ICons(head, tail) =>
+          val (tail1, tail2, tail3) = tail.unzip3
+          (ICons(ev(head)._1, tail1), ICons(ev(head)._2, tail2), ICons(ev(head)._3, tail3))
+      }
   }
 
   def first[A, B, C](p: (A, B))(f: A => C): (C, B) = (f(p._1), p._2)

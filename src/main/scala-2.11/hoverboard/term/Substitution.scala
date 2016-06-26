@@ -5,7 +5,7 @@ import hoverboard.Name
 import scalaz._
 import Scalaz._
 
-case class Substitution private(toMap: IMap[Name, Term]) {
+case class Substitution private(val toMap: IMap[Name, Term]) {
   require(toMap.toList.all(m => Var(m._1) != m._2), "identity substitutions should be pre-filtered")
 
   lazy val freeVars = ISet.unions(toMap.values.map(_.freeVars))
@@ -67,4 +67,7 @@ object Substitution {
       case (Some(s1), Some(s2)) => s1 ++ s2
       case _ => None
     }
+
+  def union(subs: IList[Substitution]): Option[Substitution] =
+    merge(subs.map(Some(_)))
 }

@@ -176,6 +176,8 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks {
   }
 
   "most specific generalisation" should "expose substitutions" in {
+    implicit val generatorDrivenConfig = PropertyCheckConfig(minSuccessful = 5)
+
     forAll { (ctx: Term, leftSubTerm: Term, rightSubTerm: Term) =>
       whenever(!leftSubTerm.isInstanceOf[Var]) {
         whenever(!rightSubTerm.isInstanceOf[Var]) {
@@ -201,6 +203,8 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks {
   }
 
   it should "do nothing for equal terms" in {
+    implicit val generatorDrivenConfig = PropertyCheckConfig(minSuccessful = 5)
+
     forAll { (t: Term) =>
       val (ctx, sub1, sub2) = msgWithSanityCheck(t, t)
       sub1.isEmpty shouldBe true

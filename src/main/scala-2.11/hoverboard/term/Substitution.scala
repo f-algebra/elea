@@ -5,10 +5,11 @@ import hoverboard.Name
 import scalaz._
 import Scalaz._
 
-case class Substitution private(val toMap: IMap[Name, Term]) {
+case class Substitution private (toMap: IMap[Name, Term]) extends FirstOrder[Substitution] {
   require(toMap.toList.all(m => Var(m._1) != m._2), "identity substitutions should be pre-filtered")
 
-  lazy val freeVars = ISet.unions(toMap.values.map(_.freeVars))
+  override protected def getFreeVars = ISet.unions(toMap.values.map(_.freeVars))
+
   def boundVars = toMap.keySet
 
   /**
@@ -48,6 +49,21 @@ case class Substitution private(val toMap: IMap[Name, Term]) {
     other.toMap.toList.foldLeft[Option[Substitution]](Some(this))((sub, elem) => sub.flatMap(_ + elem))
 
   def apply(term: Term): Term = term :/ this
+
+  override def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Substitution =
+    copy(toMap = toMap.map(f(ISet.empty, _)))
+
+  override def order(other: Substitution): Ordering =
+    toMap ?|? other.toMap
+
+  override def zip(other: Substitution): Option[IList[(Context, Context)]] =
+    if (toMap.keySet == other.toMap.keySet) {
+      Some(toMap.intersectionWith(other.toMap)((_, _)).values.toIList)
+    } else {
+      None
+    }
+
+  override def arbitraryOrderingNumber: Int = 1
 }
 
 object Substitution {
@@ -58,6 +74,9 @@ object Substitution {
     require(names.length == terms.length)
     Substitution(names.fzipWith[Term, (Name, Term)](terms)((_, _)).toList: _*)
   }
+
+  def fromMap(map: IMap[Name, Term]): Substitution =
+    new Substitution(map)
 
   def empty: Substitution =
     new Substitution(IMap.empty)

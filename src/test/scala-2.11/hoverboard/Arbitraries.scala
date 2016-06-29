@@ -46,7 +46,7 @@ object Arbitraries {
   implicit class GenTermWrapper(gen: Gen[Term]) {
     def withMutation: Gen[Term] = for {
       term <- gen
-      mutated <- Gen.choose(0f, 1f).flatMap(x => if (x < 0.5f) mutateTerm(term) else Gen.const(term))
+      mutated <- Gen.choose(0f, 1f).flatMap(x => if (x < 0.3f) mutateTerm(term) else Gen.const(term))
     } yield mutated
   }
 

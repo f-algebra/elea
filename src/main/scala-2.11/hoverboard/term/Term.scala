@@ -8,6 +8,7 @@ import scalaz.{Name => _, _}
 import Scalaz._
 
 // TODO: Since terms are immutable, could we get faster equality by first checking reference equality?
+// TODO: Make context fissioning use the SCC unfolding logic, and remove unfolding from drive (it's only in there for fission)
 
 abstract class Term extends TermLike[Term] {
 
@@ -133,17 +134,30 @@ abstract class Term extends TermLike[Term] {
   final def strictlyEmbedsInto(other: Term): Boolean =
     this.embedsInto(other) && !other.embedsInto(this)
 
+  final def mostSpecificGeneralisation(other: Term): (Term, Substitution, Substitution) =
+    this ⨅ other
+
   final def ⨅(other: Term): (Term, Substitution, Substitution) =
-    zipWith(other)(_ ⨅ _) match {
+    uzipWith(other)(_ ⨅ _) match {
       case None =>
         val newVar = Name.fresh("γ")
         (Var(newVar), this / newVar, other / newVar)
       case Some(msgs) =>
         val (subterms, thisSubs, otherSubs) = msgs.unzip3
-        // If this union has failed then the fresh variable creator is broken
+        // If these unions fail then the fresh variable creator is broken
         // since all of these substitutions should have disjoint domains
         val Some(thisSub) = Substitution.union(thisSubs)
         val Some(otherSub) = Substitution.union(otherSubs)
-        (this.withImmediateSubterms(subterms), thisSub, otherSub)
+        val newCtx = this.withImmediateSubterms(subterms)
+        val mergable = subterms.all {
+          case Var(n) => thisSub.boundVars.contains(n)
+          case _ => false
+        }
+        if (mergable) {
+          val newVar = Name.fresh("γ")
+          (Var(newVar), (newCtx :/ thisSub) / newVar, (newCtx :/ otherSub) / newVar)
+        } else {
+          (newCtx, thisSub, otherSub)
+        }
     }
 }

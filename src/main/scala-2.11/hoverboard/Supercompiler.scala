@@ -7,25 +7,49 @@ import scalaz._
 
 object Supercompiler {
 
-  final def ripple(skeleton: Term, goal: Term): Option[(Term, Substitution)] =
+  class SubstitutionsNonUnifiableError(detailMsg: String) extends AssertionError(detailMsg)
+
+  final def couplesWith(skeleton: Term, goal: Term): Boolean =
     (skeleton, goal) match {
       case (AppView(skelFun: Fix, skelArgs), AppView(goalFun: Fix, goalArgs)) =>
-        // Coupling step
-        if (skelFun.index == goalFun.index) {
-          require(skelArgs.length == goalArgs.length, s"Should have equal argument counts: $skeleton vs. $goal")
-          val rippledArgs = skelArgs.fzipWith(goalArgs)(ripple)
-          if (rippledArgs.any(_.isEmpty))
-            None
-          else {
-            None
-          }
-        }
-        // Diving step
-        else {
-          None
-        }
+        skelFun.index == goalFun.index && skelArgs.length == goalArgs.length
       case _ =>
-        None // Probably an assertion error
+        false
+    }
+
+  final def dive(skeleton: Term, goal: Term): (Term, Substitution) = {
+    val (rippledGoalSubterms, rippleSubs) = goal.immediateSubterms.map(ripple(skeleton, _)).unzip
+    Substitution.union(rippleSubs) match {
+      case None =>
+        throw new SubstitutionsNonUnifiableError(s"$skeleton dive $goal")
+      case Some(unifiedSubs) =>
+        (goal.withImmediateSubterms(rippledGoalSubterms), unifiedSubs)
+    }
+  }
+
+  final def couple(skeleton: Term, goal: Term): (Term, Substitution) = {
+    val (ctx, skelSub, goalSub) = skeleton ⨅ goal
+    val rippledWavefronts: IMap[Name, (Term, Substitution)] =
+      skelSub.toMap.intersectionWith(goalSub.toMap)(ripple)
+    Substitution.union(rippledWavefronts.values.map(_._2).toIList) match {
+      case None =>
+        throw new SubstitutionsNonUnifiableError(s"$skeleton dive $goal")
+      case Some(mergedGenSub) =>
+        val mergedCtxSub = Substitution.fromMap(rippledWavefronts.map(_._1))
+        (ctx :/ mergedCtxSub, mergedGenSub)
+    }
+  }
+
+  final def ripple(skeleton: Term, goal: Term): (Term, Substitution) =
+    skeleton unifyLeft goal match {
+      case Some(unifier) if skeleton.indices.isSubsetOf(goal.indices) =>
+        val genVar = Name.fresh("ξ")
+        (Var(genVar), goal / genVar)
+      case _ =>
+        if (couplesWith(skeleton, goal))
+          couple(skeleton, goal)
+        else
+          dive(skeleton, goal)
     }
 
   final def unfold(term: Term): Term = {

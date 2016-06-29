@@ -32,6 +32,9 @@ case class Var(name: Name) extends Term {
         None
     }
 
+  override def uzip(other: Term): Option[IList[(Term, Term)]] =
+    zip(other)
+
   def arbitraryOrderingNumber: Int = 7
 
   def order(other: Term): Ordering =
@@ -39,4 +42,6 @@ case class Var(name: Name) extends Term {
       case other: Var => name ?|? other.name
       case _ => arbitraryOrderingNumber ?|? other.arbitraryOrderingNumber
     }
+
+  override def freshen = this
 }

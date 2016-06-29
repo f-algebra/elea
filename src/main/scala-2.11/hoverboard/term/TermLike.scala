@@ -42,7 +42,7 @@ abstract class TermLike[This <: TermLike[This]] {
       visited = (names, term) :: visited
       term
     }
-    visited
+    visited.reverse
   }
 
   final def immediateSubterms: IList[Term] = immediateSubtermsWithBindings.map(_._2)
@@ -131,8 +131,13 @@ abstract class TermLike[This <: TermLike[This]] {
   @inline
   def zip(other: This): Option[IList[(Term, Term)]]
 
+  def uzip(other: This): Option[IList[(Term, Term)]]
+
   final def zipWith[A](other: This)(f: (Term, Term) => A): Option[IList[A]] =
     zip(other).map(_.map(f.tupled))
+
+  final def uzipWith[A](other: This)(f: (Term, Term) => A): Option[IList[A]] =
+    uzip(other).map(_.map(f.tupled))
 
   /**
     * Whether this term-like is the same shape as the `other` and the subterms of this
@@ -158,4 +163,10 @@ abstract class TermLike[This <: TermLike[This]] {
     */
   def removeIndices: This =
     mapSubterms(_.removeIndices)
+
+  /**
+    * Replace all bound variables with fresh ones.
+    * So far I think this is only useful for testing.
+    */
+  def freshen: This
 }

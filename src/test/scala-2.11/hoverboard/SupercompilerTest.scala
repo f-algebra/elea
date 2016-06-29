@@ -22,13 +22,18 @@ class SupercompilerTest extends FlatSpec with Matchers with PropertyChecks {
     Supercompiler.unfold(t"Reverse Ones") shouldEqual t"Reverse (unfold Ones)"
   }
 
-  "rippling" should "work for associativity of Add" in {
-//    val ripple = Supercompiler.ripple(t"Add (Add x y) z".drive, t"Suc (Add (Add x y) m)".drive)
-//    ripple should be ('isDefined)
-//    val Some((term, sub)) = ripple
-//    sub.boundVars.size shouldBe 1
-//    val subVar = Var(sub.boundVars.toList.head)
-//    subVar shouldEqual term
-//    sub.apply(subVar) shouldEqual t"Add (Add x y) z".drive
+  def rippleWithSuccessCheck(skeleton: Term, goal: Term): (Term, Substitution) = {
+    val (drivenGoal, drivenSkel) = (goal.drive, skeleton.drive)
+    val (term, sub) = Supercompiler.ripple(drivenSkel, drivenGoal)
+    term :/ sub shouldEqual drivenGoal
+    sub.toMap.values.foreach { rippled =>
+      drivenSkel unifyLeft rippled should be ('isDefined)
+    }
+    (term, sub)
+  }
+
+  "rippling" should "work for known examples" in {
+   // rippleWithSuccessCheck(t"Add (Add x y) z", t"Suc (Add (Add x2 y) z)")
+    rippleWithSuccessCheck(t"Reverse (Reverse xs)", t"Reverse (Append ys (Cons n Nil))")
   }
 }

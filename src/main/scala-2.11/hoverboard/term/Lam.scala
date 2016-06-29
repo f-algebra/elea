@@ -1,10 +1,10 @@
 package hoverboard.term
 
-import hoverboard._
 import hoverboard.Name
+import hoverboard._
 import hoverboard.rewrite.Env
 
-import scalaz._
+import scalaz.{Name => _, _}
 import Scalaz._
 
 case class Lam(binding: Name, body: Term) extends Term {
@@ -34,6 +34,20 @@ case class Lam(binding: Name, body: Term) extends Term {
       case other: Lam => body embedsInto other.body
       case _ => false
     }
+//
+//  override def ⨅(other: Term): (Term, Substitution, Substitution) = {
+//    other match {
+//      case other: Lam =>
+//        val (ctx, leftSub, rightSub) = body ⨅ other.body
+//        if (leftSub.boundVars.contains(binding))
+//          defaultGeneralisation(other)
+//        else {
+//          (copy(body = ctx), leftSub, rightSub.mapImmediateSubterms(_ :/ Var(binding) / other.binding))
+//        }
+//      case _ =>
+//        defaultGeneralisation(other)
+//    }
+//  }
 
   /**
     * Will freshen the bound variable of this lambda term if it clashes with the provided names
@@ -83,6 +97,14 @@ case class Lam(binding: Name, body: Term) extends Term {
         None
     }
 
+  override def uzip(other: Term): Option[IList[(Term, Term)]] =
+    other match {
+      case other: Lam =>
+        Some(IList((body, other.body :/ (Var(binding) / other.binding))))
+      case _ =>
+        None
+    }
+
   def order(other: Term): Ordering =
     other match {
       case other: Lam =>
@@ -90,6 +112,9 @@ case class Lam(binding: Name, body: Term) extends Term {
       case _ =>
         arbitraryOrderingNumber ?|? other.arbitraryOrderingNumber
     }
+
+  override def freshen: Term =
+    avoidCapture(ISet.singleton(binding)).mapImmediateSubterms(_.freshen)
 }
 
 object Lam {

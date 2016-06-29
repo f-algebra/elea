@@ -159,6 +159,14 @@ case class PatternBranch(pattern: Pattern, body: Term) extends Branch {
         None
     }
 
+  override def uzip(other: Branch): Option[IList[(Term, Term)]] =
+    other match {
+      case other: PatternBranch =>
+        Some(IList((body, other.body :/ Substitution.zip(other.pattern.bindings, pattern.bindings.map(Var)))))
+      case _ =>
+        None
+    }
+
   def arbitraryOrderingNumber: Int = 1
 
   def order(other: Branch): Ordering =
@@ -172,4 +180,7 @@ case class PatternBranch(pattern: Pattern, body: Term) extends Branch {
   def explore: IList[Branch] = for {
     newBody <- body.explore
   } yield PatternBranch(pattern, newBody)
+
+  override def freshen: Branch =
+    avoidCapture(pattern.bindingsSet).mapImmediateSubterms(_.freshen)
 }

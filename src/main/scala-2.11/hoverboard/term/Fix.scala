@@ -7,7 +7,7 @@ import hoverboard.Name
 import scalaz.{Name => _, _}
 import Scalaz._
 
-case class Fix(body: Lam,
+case class Fix(body: Term,
                index: Fix.Index,
                name: Option[String] = None,
                driven: Boolean = false)
@@ -189,6 +189,12 @@ case class Fix(body: Lam,
 
 object Fix {
   sealed abstract class Index
-  case object Omega extends Index
-  case class Finite(name: Name) extends Index
+
+  case object Omega extends Index {
+    override def toString = "ω"
+  }
+
+  case class Finite(name: Name) extends Index {
+    override def toString = name.toString
+  }
 }

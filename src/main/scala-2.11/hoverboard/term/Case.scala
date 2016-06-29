@@ -68,6 +68,18 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch]) extends Term 
     }
   }
 
+  def uzip(other: Term): Option[IList[(Term, Term)]] = {
+    def resolve(xs: IList[Option[IList[(Term, Term)]]]): Option[IList[(Term, Term)]] =
+      xs.sequence.map(_.flatten)
+
+    other match {
+      case other: Case if branches.size == other.branches.size =>
+        resolve(branches.fzipWith(other.branches)(_ uzip _).list).map((matchedTerm, other.matchedTerm) +: _)
+      case _ =>
+        None
+    }
+  }
+
   def arbitraryOrderingNumber: Int = 2
 
   def order(other: Term): Ordering =
@@ -88,4 +100,7 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch]) extends Term 
       })
     copy(branches = mappedBranches)
   }
+
+  override def freshen =
+    copy(branches = branches.map(_.freshen))
 }

@@ -48,6 +48,8 @@ package object hoverboard {
   def first[A, B, C](p: (A, B))(f: A => C): (C, B) = (f(p._1), p._2)
 
   implicit class WrappedAny[A](a: A) {
-    def tap(fun: A => Unit): A = { fun(a); a }
+    def tap(fun: A => Unit): A = {
+      fun(a); a
+    }
   }
 }

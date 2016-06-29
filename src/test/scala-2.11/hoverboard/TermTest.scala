@@ -68,7 +68,7 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks {
     forAll { (t: Term) =>
       val zipped = t zip t
       zipped.isDefined shouldEqual true
-      zipped.get.reverse shouldEqual t.immediateSubterms.zip(t.immediateSubterms)
+      zipped.get shouldEqual t.immediateSubterms.zip(t.immediateSubterms)
     }
   }
 
@@ -85,6 +85,19 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks {
       var hit = ISet.empty[Term]
       t.mapSubterms { t => hit = hit.insert(t); t }
       hit shouldEqual ISet.fromFoldable(t.subterms)
+    }
+  }
+
+  "immediate subterms" should "be preserved under identity" in {
+    forAll { (t: Term) =>
+      t.mapImmediateSubterms(t => t) shouldEqual t
+      t.withImmediateSubterms(t.immediateSubterms) shouldEqual t
+    }
+  }
+
+  "freshening" should "preserve alpha-equality" in {
+    forAll { (t: Term) =>
+      t.freshen shouldEqual t
     }
   }
 
@@ -203,10 +216,10 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks {
   }
 
   it should "do nothing for equal terms" in {
-    implicit val generatorDrivenConfig = PropertyCheckConfig(minSuccessful = 5)
+    implicit val generatorDrivenConfig = PropertyCheckConfig(minSuccessful = 10)
 
     forAll { (t: Term) =>
-      val (ctx, sub1, sub2) = msgWithSanityCheck(t, t)
+      val (ctx, sub1, sub2) = msgWithSanityCheck(t.freshen, t)
       sub1.isEmpty shouldBe true
       sub2.isEmpty shouldBe true
       ctx shouldEqual t

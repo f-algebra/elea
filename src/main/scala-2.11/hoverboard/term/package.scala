@@ -27,10 +27,4 @@ package object term {
     case (_, Omega) => LT
     case (Finite(n), Finite(m)) => n ?|? m
   }
-
-  /**
-    * A [[Context]] is a term with a gap denoted as a "_" variable
-    */
-  type Context = Term
-  val contextGap: Name = "_"
 }

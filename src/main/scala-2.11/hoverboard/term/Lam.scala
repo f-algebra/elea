@@ -34,20 +34,6 @@ case class Lam(binding: Name, body: Term) extends Term {
       case other: Lam => body embedsInto other.body
       case _ => false
     }
-//
-//  override def ⨅(other: Term): (Term, Substitution, Substitution) = {
-//    other match {
-//      case other: Lam =>
-//        val (ctx, leftSub, rightSub) = body ⨅ other.body
-//        if (leftSub.boundVars.contains(binding))
-//          defaultGeneralisation(other)
-//        else {
-//          (copy(body = ctx), leftSub, rightSub.mapImmediateSubterms(_ :/ Var(binding) / other.binding))
-//        }
-//      case _ =>
-//        defaultGeneralisation(other)
-//    }
-//  }
 
   /**
     * Will freshen the bound variable of this lambda term if it clashes with the provided names
@@ -115,6 +101,9 @@ case class Lam(binding: Name, body: Term) extends Term {
 
   override def freshen: Term =
     avoidCapture(ISet.singleton(binding)).mapImmediateSubterms(_.freshen)
+
+  override def unfold: Term =
+    copy(body = body.unfold)
 }
 
 object Lam {

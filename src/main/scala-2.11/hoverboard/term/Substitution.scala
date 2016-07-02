@@ -17,6 +17,8 @@ case class Substitution private (toMap: IMap[Name, Term]) extends FirstOrder[Sub
     */
   def isEmpty = toMap.isEmpty
 
+  def nonEmpty = !isEmpty
+
   /**
     * Remove a variable from this substitution
     * @return [[None]] if the result is empty
@@ -35,15 +37,17 @@ case class Substitution private (toMap: IMap[Name, Term]) extends FirstOrder[Sub
       new Substitution(toMap.filterWithKey((name, _) => !overlap.contains(name)))
   }
 
-  def +(elem: (Name, Term)): Option[Substitution] =
-    toMap.lookup(elem._1) match {
+  def +(elem: (Name, Term)): Option[Substitution] = {
+    val (name, term) = elem
+    toMap.lookup(name) match {
       case None =>
-        Some(new Substitution(toMap + elem))
-      case Some(existingMatch) if existingMatch =@= elem._2 =>
+        Some(new Substitution(toMap + (name -> this.apply(term))))
+      case Some(existingMatch) if existingMatch =@= term =>
         Some(this)
       case _ =>
         None
     }
+  }
 
   def ++(other: Substitution): Option[Substitution] =
     other.toMap.toList.foldLeft[Option[Substitution]](Some(this))((sub, elem) => sub.flatMap(_ + elem))
@@ -64,6 +68,9 @@ case class Substitution private (toMap: IMap[Name, Term]) extends FirstOrder[Sub
     }
 
   override def arbitraryOrderingNumber: Int = 1
+
+  override def toString =
+    toMap.toList.map { case (x, t) => s"$x -> $t" } .mkString("\n")
 }
 
 object Substitution {

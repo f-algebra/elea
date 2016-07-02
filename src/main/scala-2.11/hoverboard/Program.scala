@@ -25,6 +25,6 @@ object Program {
 
   lazy val prelude: Program = {
     val preludeText = Source.fromURL(getClass.getResource("prelude.hover")).mkString
-    Parser.parseAll(preludeText)(x => x)(Program.empty)
+    Parser.parseAll(preludeText)(_.modifyTerm(_.drive))(Program.empty)
   }
 }

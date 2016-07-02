@@ -18,15 +18,14 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch]) extends Term 
     Case(matchedTerm.drive(env), branches.map(_.drive(env, matchedTerm)))
 
   override def driveHeadApp(env: Env, args: NonEmptyList[Term]): Term =
+  // TODO slight improvement by not re-driving matched term here
   // Floating pattern matches out of function position
-    Case(matchedTerm, branches.map(_.mapImmediateSubterms(App(_, args)).drive(env, matchedTerm)))
+    C(x => App(Var(x), args)).applyToBranches(this).drive(env)
 
   override def driveHeadCase(env: Env, outerBranches: NonEmptyList[Branch]): Term =
+  // TODO slight improvement by not re-driving matched term here
   // Case-case disributivity rule
-    Case(matchedTerm, branches.map { branch =>
-      val freshOuterBranches = outerBranches.map(_.avoidCapture(branch.capturedVars))
-      branch.mapImmediateSubterms(term => Case(term, freshOuterBranches)).drive(env, matchedTerm)
-    })
+    C(x => Case(Var(x), outerBranches)).applyToBranches(this).drive(env)
 
   override def :/(sub: Substitution): Term =
     Case(matchedTerm :/ sub, branches.map(_ :/ sub))

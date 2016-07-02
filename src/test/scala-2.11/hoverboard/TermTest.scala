@@ -14,21 +14,24 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks {
   implicit val program: Program = Program.prelude
   implicit val termArb = Arbitrary(Arbitraries.term)
 
+  // TODO remove this when finished 1.0
+  override implicit val generatorDrivenConfig = PropertyCheckConfig(minSuccessful = 5)
+
   "substitution" should "replace variables" in {
     t"x" :/ t"f x" / "x" shouldBe t"f x"
   }
 
   "constant arguments" should "be detectable" in {
-    t"Add".asInstanceOf[Fix].constantArgs shouldEqual IList(1)
-    t"Append".asInstanceOf[Fix].constantArgs shouldEqual IList(1)
-    t"Reverse".asInstanceOf[Fix].constantArgs shouldEqual IList.empty[Int]
-    t"fix x -> x".asInstanceOf[Fix].constantArgs shouldEqual IList.empty[Int]
+    t"fix f x y z -> case y | 0 -> z | Suc y' -> Suc (f x y' z) end"
+      .asInstanceOf[Fix].constantArgs shouldEqual IList(0, 2)
+    t"fix x -> x"
+      .asInstanceOf[Fix].constantArgs shouldEqual IList.empty[Int]
   }
 
-  they should "be removable" in {
-    t"Add".asInstanceOf[Fix].removeConstantArg(1) shouldEqual
+  they should "be removed by driving" in {
+    t"Add" shouldEqual
       t"fn x y -> (fix f x -> case x | 0 -> y | Suc x' -> Suc (f x') end) x"
-    t"Append".asInstanceOf[Fix].removeConstantArg(1) shouldEqual
+    t"Append" shouldEqual
       t"fn xs ys -> (fix f xs -> case xs | Nil -> ys | Cons x xs' -> Cons x (f xs') end) xs"
     t"fix f x y z -> case y | 0 -> z | Suc y' -> Suc (f x y' z) end".asInstanceOf[Fix].removeConstantArg(0) shouldEqual
       t"fn x -> fix f y z -> case y | 0 -> z | Suc y' -> Suc (f y' z) end"
@@ -136,29 +139,30 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks {
   }
 
   "stripContext" should "strip (Cons y _) from an example" in {
-    t"case xs | Nil -> Cons y Nil | Cons x xs' -> Cons y (Append (f xs') (Cons x Nil)) end"
-      .stripContext(t"Cons y _") shouldEqual Some(t"case xs | Nil -> Nil | Cons x xs' -> Append (f xs') (Cons x Nil) end")
+    C(x => t"Cons y"(Var(x)))
+      .strip(t"case xs | Nil -> Cons y Nil | Cons x xs' -> Cons y (Append (f xs') (Cons x Nil)) end") shouldEqual
+      Some(t"case xs | Nil -> Nil | Cons x xs' -> Append (f xs') (Cons x Nil) end")
   }
 
   it should "fail for invalid examples" in {
-    t"case xs | Nil -> Cons y Nil | Cons x xs' -> Cons z (Append (f xs') (Cons x Nil)) end"
-      .stripContext(t"Cons y _") shouldBe empty
-    t"case xs | Nil -> Cons y Nil | Cons y xs' -> Cons y (Append (f xs') (Cons x Nil)) end"
-      .stripContext(t"Cons y _") shouldBe empty
+    C(x => t"Cons y"(Var(x)))
+      .strip(t"case xs | Nil -> Cons y Nil | Cons x xs' -> Cons z (Append (f xs') (Cons x Nil)) end") shouldBe empty
+    C(x => t"Cons y"(Var(x)))
+      .strip(t"case xs | Nil -> Cons y Nil | Cons y xs' -> Cons y (Append (f xs') (Cons x Nil)) end") shouldBe empty
   }
 
   "guessConstructorContext" should "find the context for Reverse fused into Snoc" in {
     t"fix f xs -> case xs | Nil -> Cons y Nil | Cons x xs' -> Append (f xs') (Cons x Nil) end"
-      .asInstanceOf[Fix].guessConstructorContext should contain (t"Cons y _")
+      .asInstanceOf[Fix].guessConstructorContext should contain (C(x => t"Cons y"(Var(x))))
   }
 
   "fissionConstructorContext" should "fission (Cons y _) out of Reverse fused into Snoc" in {
-    t"fix[a] f xs -> case xs | Nil -> Cons y Nil | Cons x xs' -> Append (f xs') (Cons x Nil) end"
+    val Some((ctx, newFix)) = t"fix[a] f xs -> case xs | Nil -> Cons y Nil | Cons x xs' -> Append (f xs') (Cons x Nil) end"
       .drive
       .asInstanceOf[Fix]
-      .fissionConstructorContext shouldEqual Some(
-        t"fix[a] f xs -> case xs | Nil -> Nil | Cons x xs' -> Append (f xs') (Cons x Nil) end".drive
-      )
+      .fissionConstructorContext
+    ctx shouldEqual C(x => t"fn f xs -> Cons y (f xs)".betaReduce(NonEmptyList(Var(x))))
+    newFix shouldEqual t"fix[a] f xs -> case xs | Nil -> Nil | Cons x xs' -> Append (f xs') (Cons x Nil) end".drive
   }
 
   "homeomorphic embedding" should "work properly" in {
@@ -168,16 +172,15 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks {
   }
 
   "fppf" should "be recognisable" in {
-    t"Add x y".asInstanceOf[App].isFPPF shouldBe true
+    t"Add x y".drive.asInstanceOf[App].isFPPF shouldBe true
     t"Add x x".drive.asInstanceOf[App].isFPPF shouldBe false
     t"Add (Mul x y) z".drive.asInstanceOf[App].isFPPF shouldBe false
     t"Add x (Mul y z)".drive.asInstanceOf[App].isFPPF shouldBe true
   }
 
   "strict args" should "be recognisable" in {
-    t"Reverse".asInstanceOf[Fix].strictArgs shouldEqual IList(0)
-    t"Append".asInstanceOf[Fix].strictArgs shouldEqual IList(0)
-    t"Lt".asInstanceOf[Fix].strictArgs shouldEqual IList(0, 1)
+    t"Reverse".asInstanceOf[Fix].strictArgIndices shouldEqual IList(0)
+    t"Lt".asInstanceOf[Fix].strictArgIndices shouldEqual IList(0, 1)
   }
 
   def msgWithSanityCheck(t1: Term, t2: Term): (Term, Substitution, Substitution) = {
@@ -189,8 +192,6 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks {
   }
 
   "most specific generalisation" should "expose substitutions" in {
-    implicit val generatorDrivenConfig = PropertyCheckConfig(minSuccessful = 5)
-
     forAll { (ctx: Term, leftSubTerm: Term, rightSubTerm: Term) =>
       whenever(!leftSubTerm.isInstanceOf[Var]) {
         whenever(!rightSubTerm.isInstanceOf[Var]) {
@@ -216,8 +217,6 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks {
   }
 
   it should "do nothing for equal terms" in {
-    implicit val generatorDrivenConfig = PropertyCheckConfig(minSuccessful = 10)
-
     forAll { (t: Term) =>
       val (ctx, sub1, sub2) = msgWithSanityCheck(t.freshen, t)
       sub1.isEmpty shouldBe true

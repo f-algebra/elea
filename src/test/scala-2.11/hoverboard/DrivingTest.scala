@@ -16,6 +16,8 @@ class DrivingTest extends FlatSpec with Matchers with PropertyChecks {
   implicit val termArb = Arbitrary(Arbitraries.term)
   implicit val program: Program = Program.prelude
 
+  // TODO remove this when finished 1.0
+  override implicit val generatorDrivenConfig = PropertyCheckConfig(minSuccessful = 8)
 
   "driving" should "perform beta reduction" in {
     t"(fn x -> x) y".drive shouldEqual t"y"
@@ -24,12 +26,12 @@ class DrivingTest extends FlatSpec with Matchers with PropertyChecks {
   }
 
   it should "distribute case onto case" in {
-    t"case (case x | 0 -> a | Suc x' -> b end) | 0 -> c end".drive shouldEqual
-      t"case x | 0 -> (case a | 0 -> c end) | Suc x' -> (case b | 0 -> c end) end"
+    t"case (case x | Suc x -> x end) | Suc x -> x end".drive shouldEqual
+      t"case x | Suc x2 -> (case x2 | Suc x -> x end) end"
   }
 
   it should "distribute app onto case" in {
-    t"(case x | 0 -> f end) y z".drive shouldEqual t"case x | 0 -> f y z end"
+    t"(case x | Suc y -> f y end) y".drive shouldEqual t"case x | Suc z -> f z y end"
   }
 
   it should "reduce case of inj" in {
@@ -48,8 +50,6 @@ class DrivingTest extends FlatSpec with Matchers with PropertyChecks {
   }
 
   it should "be idempotent" in {
-    implicit val generatorDrivenConfig = PropertyCheckConfig(minSuccessful = 5)
-
     val historicalFails = Seq(
       t"Add 0 y",
       t"(fn x y -> case x | 0 -> Suc 0 | Suc x' -> Add y (Mul x' y) end) nat_1 (Suc (Suc (f nat_1)))")

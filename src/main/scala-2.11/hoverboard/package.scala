@@ -18,9 +18,8 @@ package object hoverboard {
 
   implicit class WrappedStringContext(context: StringContext)(implicit program: Program) {
     def t(args: Any*): Term = {
-      require(args.isEmpty)
-      require(context.parts.length == 1)
-      Parser.parseTerm(context.parts(0))
+      val termDef = context.standardInterpolator(x => x, args.map(_.toString))
+      Parser.parseTerm(termDef)
     }
   }
 

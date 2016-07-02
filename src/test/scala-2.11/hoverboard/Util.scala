@@ -1,6 +1,6 @@
 package hoverboard
 
-import hoverboard.term.Term
+import hoverboard.term.{Context, Term}
 import org.scalactic.Equality
 import org.scalatest.enablers.{Emptiness, Containing}
 
@@ -13,6 +13,14 @@ object Util {
     override def areEqual(a: Term, b: Any): Boolean =
       b match {
         case b: Term => a.removeIndices =@= b.removeIndices
+        case _ => false
+      }
+  }
+
+  implicit object ContextAlphaEq extends Equality[Context] {
+    override def areEqual(a: Context, b: Any): Boolean =
+      b match {
+        case b: Context => a =@= b
         case _ => false
       }
   }

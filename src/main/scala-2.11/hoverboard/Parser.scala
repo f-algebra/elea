@@ -11,6 +11,9 @@ sealed trait Statement {
 
 case class TermDef(name: String, term: Term) extends Statement {
   def apply(program: Program) = program + (name -> term.withName(name))
+
+  def modifyTerm(f: Term => Term): TermDef =
+    copy(term = f(term))
 }
 
 case class ConstructorDef(constr: Constructor) extends Statement {
@@ -32,10 +35,14 @@ object Parser {
 
     val keywords = Set("fix", "fn", "case", "of", "else", "let", "end", "unfold", "rel")
 
-    val lowercase = P(CharIn('a' to 'z') | CharIn(Seq('_')))
+    val lowercase = P(CharIn('a' to 'z') | CharIn(Seq('_', 'α')))
     val uppercase = P(CharIn('A' to 'Z') | CharIn('0' to '9') | CharIn(Seq('\'')))
+    val int: P[Int] = P((P(CharIn('1' to '9')) ~~ P(CharIn('0' to '9')).repX).!).map(Integer.parseInt(_))
+    val freshener: P[Int] = P("[" ~ int ~ "]")
 
-    val varName: P[Name] = P((lowercase ~~ (uppercase | lowercase).repX).!).filter(n => !keywords.contains(n)).map(Name(_))
+    val varName: P[Name] = P(P(lowercase ~~ (uppercase | lowercase).repX).! ~ freshener.?)
+      .filter(n => !keywords.contains(n._1) || n._2.isDefined)
+      .map(n => Name(n._1, n._2))
     val definitionName: P[String] = P((uppercase ~~ (uppercase | lowercase).repX).!)
 
     val definedTerm: P[Term] = P(definitionName).map(n => program.definitionOf(n))
@@ -43,9 +50,9 @@ object Parser {
 
     val termVar: P[Term] = P(varName).map(Var)
     val simpleTerm: P[Term] = P(bot | unfold | termVar | definedTerm | "(" ~/ term ~ ")")
-    val unfold: P[Term] = P("unfold" ~/ definedTerm).map(_.asInstanceOf[Fix].unfold)
+    val unfold: P[Term] = P("unfold" ~/ definedTerm).map(_.unfold)
     val fix: P[Fix] = P("fix" ~/ fixIndex.? ~ varName.rep(1) ~ "->" ~ term)
-      .map(m => Fix(Lam(IList(m._2 : _*).toNel.get, m._3), m._1.map(Fix.Finite).getOrElse(Name.freshIndex)))
+      .map(m => Fix(Lam(IList(m._2 : _*).toNel.get, m._3), m._1.map(Fix.Finite).getOrElse(Fix.freshIndex)))
     val lam: P[Term] = P("fn" ~/ varName.rep(1) ~ "->" ~ term).map(m => Lam(IList(m._1 : _*), m._2))
     val app: P[Term] = P(simpleTerm ~/ simpleTerm.rep).map(m => m._1(m._2 : _*))
     val bot: P[Term] = P("_|_").map(_ => Bot)

@@ -61,6 +61,9 @@ case class App(fun: Term, args: NonEmptyList[Term]) extends Term with FirstOrder
       args.all(_.isInstanceOf[Var]) &&
       args.distinct == args &&
       fun.freeVars.intersection(ISet.unions(args.map(_.freeVars).toList)).isEmpty
+
+  override def unfold: Term =
+    fun.unfold.betaReduce(args)
 }
 
 /**

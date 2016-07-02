@@ -8,8 +8,13 @@ data Suc *;
 data Nil;
 data Cons _ *;
 
+data Leaf;
+data Node _ * *;
+
 let 1 = Suc 0 ;
 let 2 = Suc 1 ;
+
+let And = fn p q -> case p | False -> False | True -> q end ;
 
 let Add = fix add x y -> case x | 0 -> y | Suc x' -> Suc (add x' y) end ;
 let Mul = fix mul x y -> case x | 0 -> 1 | Suc x' -> Add y (mul x' y) end ;
@@ -56,3 +61,20 @@ let Reverse = fix rev xs ->
     end ;
 
 let Ones = fix ones -> Cons 1 ones ;
+
+let IsSorted = fix srtd xs ->
+    case xs
+    | Nil -> True
+    | Cons x xs' ->
+      case xs'
+      | Nil -> True
+      | Cons y ys -> And (LtEq x y) (srtd xs')
+      end
+    end ;
+
+let Flatten = fix flat t ->
+    case t
+    | Leaf -> Leaf
+    | Node x t1 t2 ->
+      Append (flat t1) (Cons x (flat t2))
+    end ;

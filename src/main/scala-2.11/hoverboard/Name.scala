@@ -1,7 +1,5 @@
 package hoverboard
 
-import hoverboard.term.Fix
-
 import scala.collection.mutable
 
 /**
@@ -30,8 +28,6 @@ object Name {
   def apply(name: String): Name = Name(name, None)
 
   implicit def stringToName(name: String): Name = Name(name)
-
-  def freshIndex: Fix.Index = Fix.Finite(fresh("α"))
 
   def fresh(baseName: String): Name = Name(baseName)freshen
 }

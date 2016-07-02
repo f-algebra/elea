@@ -1,5 +1,6 @@
 package hoverboard
 
+import hoverboard.rewrite.Env
 import hoverboard.term._
 import org.scalacheck.Arbitrary
 import org.scalatest.prop.PropertyChecks
@@ -24,7 +25,8 @@ class SupercompilerTest extends FlatSpec with Matchers with PropertyChecks {
 
   def rippleWithSuccessCheck(skeleton: Term, goal: Term): (Term, Substitution) = {
     val (drivenGoal, drivenSkel) = (goal.drive, skeleton.drive)
-    val (term, sub) = Supercompiler.ripple(drivenSkel, drivenGoal)
+    val (term, sub) = Supercompiler.ripple(Env.empty)(drivenSkel, drivenGoal)
+    sub should be ('nonEmpty)
     term :/ sub shouldEqual drivenGoal
     sub.toMap.values.foreach { rippled =>
       drivenSkel unifyLeft rippled should be ('isDefined)
@@ -33,7 +35,9 @@ class SupercompilerTest extends FlatSpec with Matchers with PropertyChecks {
   }
 
   "rippling" should "work for known examples" in {
-   // rippleWithSuccessCheck(t"Add (Add x y) z", t"Suc (Add (Add x2 y) z)")
-    rippleWithSuccessCheck(t"Reverse (Reverse xs)", t"Reverse (Append ys (Cons n Nil))")
+    rippleWithSuccessCheck(t"Add (Add x y) z", t"Add (unfold Add x y) z")
+    rippleWithSuccessCheck(t"Reverse (Append xs ys)", t"Reverse (unfold Append xs ys)")
+  //  rippleWithSuccessCheck(t"Reverse (Reverse xs)", t"Reverse (Append (Reverse ys) (Cons n Nil))")
+    // rippleWithSuccessCheck(t"IsSorted (Flatten t)", t"IsSorted (Append (Flatten t1) (Cons n (Flatten t2)))")
   }
 }

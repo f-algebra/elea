@@ -20,6 +20,9 @@ abstract class Term extends TermLike[Term] {
       .lift[Term, Term](args => App(this, args))(args)
       .getOrElse(this)
 
+  def apply(context: Context): Context =
+    C(gap => this.apply(context.apply(Var(gap))))
+
   /**
     * Drive (simplify) a term all of whose sub-terms have already been driven
     */
@@ -106,26 +109,6 @@ abstract class Term extends TermLike[Term] {
   final def exploreSet: ISet[Term] =
     ISet.fromFoldable(explore)
 
-  def stripContext(context: Context): Option[Term] = {
-    var anyFailures = false
-    val stripped = mapBranchesWithBindings { (bindings, term) =>
-        if (!bindings.intersection(context.freeVars).isEmpty) {
-          anyFailures = true
-          term
-        } else context.unifyLeft(term) match {
-          case Some(subst) if subst.boundVars == ISet.singleton(Name("_")) =>
-            subst(Var("_"))
-          case _ =>
-            anyFailures = true
-            term
-        }
-      }
-    if (anyFailures)
-      None
-    else
-      Some(stripped)
-  }
-
   def flattenLam: (IList[Name], Term) = (IList.empty, this)
 
   def mapBranchesWithBindings(f: (ISet[Name], Term) => Term): Term =
@@ -149,15 +132,20 @@ abstract class Term extends TermLike[Term] {
         val Some(thisSub) = Substitution.union(thisSubs)
         val Some(otherSub) = Substitution.union(otherSubs)
         val newCtx = this.withImmediateSubterms(subterms)
-        val mergable = subterms.all {
+        val mergeable = !thisSubs.isEmpty && subterms.all {
           case Var(n) => thisSub.boundVars.contains(n)
           case _ => false
         }
-        if (mergable) {
+        if (mergeable) {
           val newVar = Name.fresh("γ")
           (Var(newVar), (newCtx :/ thisSub) / newVar, (newCtx :/ otherSub) / newVar)
         } else {
           (newCtx, thisSub, otherSub)
         }
     }
+
+  /**
+    * Unfolds the outermost fixed-point of this term, if one exists.
+    */
+  def unfold: Term = this
 }

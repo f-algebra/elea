@@ -1,5 +1,6 @@
 package hoverboard
 
+import hoverboard.rewrite.Env
 import hoverboard.term._
 
 import scalaz.Scalaz._
@@ -11,14 +12,18 @@ object Supercompiler {
 
   final def couplesWith(skeleton: Term, goal: Term): Boolean =
     (skeleton, goal) match {
-      case (AppView(skelFun: Fix, skelArgs), AppView(goalFun: Fix, goalArgs)) =>
-        skelFun.index == goalFun.index && skelArgs.length == goalArgs.length
+      case (AppView(skelFun, skelArgs), AppView(goalFun, goalArgs)) if skelArgs.length == goalArgs.length =>
+        (skelFun, goalFun) match {
+          case (skelFun: Fix, goalFun: Fix) => skelFun.index == goalFun.index
+          case (skelFun: Var, goalFun: Var) => skelFun == goalFun
+          case _ => false
+        }
       case _ =>
         false
     }
 
-  final def dive(skeleton: Term, goal: Term): (Term, Substitution) = {
-    val (rippledGoalSubterms, rippleSubs) = goal.immediateSubterms.map(ripple(skeleton, _)).unzip
+  final def dive(env: Env)(skeleton: Term, goal: Term): (Term, Substitution) = {
+    val (rippledGoalSubterms, rippleSubs) = goal.immediateSubterms.map(ripple(env)(skeleton, _)).unzip
     Substitution.union(rippleSubs) match {
       case None =>
         throw new SubstitutionsNonUnifiableError(s"$skeleton dive $goal")
@@ -27,36 +32,70 @@ object Supercompiler {
     }
   }
 
-  final def couple(skeleton: Term, goal: Term): (Term, Substitution) = {
-    val (ctx, skelSub, goalSub) = skeleton ⨅ goal
-    val rippledWavefronts: IMap[Name, (Term, Substitution)] =
-      skelSub.toMap.intersectionWith(goalSub.toMap)(ripple)
-    Substitution.union(rippledWavefronts.values.map(_._2).toIList) match {
+  final def mergeRipples(ripples: IMap[Name, (Term, Substitution)]): (Substitution, Substitution) =
+    Substitution.union(ripples.values.map(_._2).toIList) match {
       case None =>
-        throw new SubstitutionsNonUnifiableError(s"$skeleton dive $goal")
+        throw new SubstitutionsNonUnifiableError(s"$ripples")
       case Some(mergedGenSub) =>
-        val mergedCtxSub = Substitution.fromMap(rippledWavefronts.map(_._1))
+        val mergedCtxSub = Substitution.fromMap(ripples.map(_._1))
+        (mergedCtxSub, mergedGenSub)
+    }
+
+  final def couple(env: Env)(skeleton: Term, goal: Term): (Term, Substitution) = {
+    val (ctx, skelSub, goalSub) = skeleton ⨅ goal
+    val rippled: IMap[Name, (Term, Substitution)] =
+      skelSub.toMap.intersectionWith(goalSub.toMap)(ripple(env))
+    val (mergedCtxSub, mergedGenSub) = mergeRipples(rippled)
+    // Simplifying assumption because I'm too hungover to figure out the general case
+    mergedCtxSub.boundVars.toList match {
+      case Seq(ctxVar) =>
+        val newSkeletons = mergedGenSub.boundVars.map(x => ctx :/ Var(x) / ctxVar)
+        val (critiquedCtx, critiquedSub) = critique(env)(newSkeletons, ctx :/ mergedCtxSub)
+        val fullSub = (critiquedSub ++ mergedGenSub).getOrElse { throw new SubstitutionsNonUnifiableError(s"$skeleton ++ $goal") }
+        (critiquedCtx, fullSub)
+      case _ =>
         (ctx :/ mergedCtxSub, mergedGenSub)
     }
   }
 
-  final def ripple(skeleton: Term, goal: Term): (Term, Substitution) =
+  // TODO could fail when critique fails, if this is a hotspot
+  final def critique(env: Env)(skeletons: ISet[Term], goal: Term): (Term, Substitution) = {
+    lazy val failure = (goal, Substitution.empty)
+    if (env.alreadySeen(goal))
+      failure
+    else {
+      supercompile(goal) match {
+        case AppView(goalFun: Fix, goalArgs) =>
+          goalFun.fissionConstructorContext match {
+            case Some(fissionedFun) =>
+              failure
+              // critique(env.havingSeen(goal), skeletons, )
+            case None =>
+              failure
+          }
+        case _ =>
+          failure
+      }
+    }
+  }
+
+  final def ripple(env: Env)(skeleton: Term, goal: Term): (Term, Substitution) =
     skeleton unifyLeft goal match {
       case Some(unifier) if skeleton.indices.isSubsetOf(goal.indices) =>
         val genVar = Name.fresh("ξ")
         (Var(genVar), goal / genVar)
       case _ =>
         if (couplesWith(skeleton, goal))
-          couple(skeleton, goal)
+          couple(env)(skeleton, goal)
         else
-          dive(skeleton, goal)
+          dive(env)(skeleton, goal)
     }
 
   final def unfold(term: Term): Term = {
     // Should be used like, while !terms.any(_ embedsInto x) x = x.unfold
     term match {
       case AppView(fix: Fix, args) =>
-        val strictArgs = fix.strictArgs.filter { i =>
+        val strictArgs = fix.strictArgIndices.filter { i =>
           args.index(i) match {
             case Some(AppView(f: Fix, _)) => true
             case _ => false
@@ -76,8 +115,7 @@ object Supercompiler {
 
   }
 
-  def run(term: App): Term = {
-    require(term.fun.isInstanceOf[Fix])
+  def supercompile(term: Term): Term = {
     ???
   }
 }

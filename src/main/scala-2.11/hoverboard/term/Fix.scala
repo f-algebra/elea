@@ -32,30 +32,37 @@ case class Fix(body: Term,
   }
 
   // TODO filter on decreasing/strict args
-  override def driveHeadApp(env: Env, args: NonEmptyList[Term]): Term =
-    if (args.any(t => t.leftmost.isInstanceOf[Constructor] || t == Bot)) {
-      val originalTerm = App(this, args)
-      val driven = App(unwrap, args).drive(env)
-      val wasProductive = driven.terms.all {
-        case term@App(Var(f), xs) if f == body.binding =>
-          term.strictlyEmbedsInto(App(Var(f), args))
-        case _ =>
-          true
+  override def driveHeadApp(env: Env, args: NonEmptyList[Term]): Term = {
+    // val strictArgs = this.strictArgs(args.list)
+    None // strictArgs.find(_.isInstanceOf[Case])
+      .map { case arg: Case =>
+        Bot
       }
-      if (wasProductive)
-        (driven :/ (this / body.binding)).drive(env.havingSeen(originalTerm))
-      else
-        super.driveHeadApp(env, args)
-    } else {
-      super.driveHeadApp(env, args)
-    }
+      .getOrElse {
+        body match {
+          case body: Lam if args.any(t => t.leftmost.isInstanceOf[Constructor] || t == Bot) =>
+            val originalTerm = App(this, args)
+            val driven = App(body.body, args).drive(env)
+            val wasProductive = driven.terms.all {
+              case term@App(Var(f), xs) if f == body.binding =>
+                term.strictlyEmbedsInto(App(Var(f), args))
+              case _ =>
+                true
+            }
+            if (wasProductive)
+              (driven :/ (this / body.binding)).drive(env.havingSeen(originalTerm))
+            else
+              super.driveHeadApp(env, args)
+          case _ =>
+            super.driveHeadApp(env, args)
+        }
+      }
+  }
 
-  def unfold: Term = body.betaReduce(NonEmptyList(this))
-
-  def unwrap: Term = body.body
+  override def unfold: Term = body.betaReduce(NonEmptyList(this))
 
   override def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Term = {
-    val newBody = f(ISet.empty, body).asInstanceOf[Lam]
+    val newBody = f(ISet.empty, body)
     if (newBody =@= body) this
     else Fix(newBody, index)
   }
@@ -63,7 +70,7 @@ case class Fix(body: Term,
   override def toString: String =
     name.getOrElse {
       val (bindings, innerBody) = body.flattenLam
-      s"fix[${index}] ${bindings.toList.mkString(" ")} -> ${innerBody}"
+      s"fix$index ${bindings.toList.mkString(" ")} -> $innerBody"
     }
 
   override def withName(name: String) = {
@@ -82,45 +89,53 @@ case class Fix(body: Term,
     * }}}
     * @return The indices of any constant arguments to this fixed-point
     */
-  def constantArgs: IList[Int] = {
-    val (bindings, innerBody) = body.flatten
-    require(bindings.toList.size == bindings.toSet.size)
-    val fixBinding = bindings.head
-    val argBindings = bindings.tail
-    val recursiveCalls = innerBody
-      .subtermsWithBindings
-      .filter { case (bindings, term) =>
-        term match {
-          case App(Var(f), _) => !bindings.contains(f) && f == fixBinding
-          case _ => false
+  def constantArgs: IList[Int] =
+    body match {
+      case body: Lam =>
+        val (bindings, innerBody) = body.flatten
+        require(bindings.toList.size == bindings.toSet.size)
+        val fixBinding = bindings.head
+        val argBindings = bindings.tail
+        val recursiveCalls = innerBody
+          .subtermsWithBindings
+          .filter { case (bindings, term) =>
+            term match {
+              case App(Var(f), _) => !bindings.contains(f) && f == fixBinding
+              case _ => false
+            }
+          }
+
+        IList(argBindings.toList.indices : _*).filter { (i: Int) =>
+          val arg = argBindings.index(i).get
+          recursiveCalls.all {
+            case (bindings, App(_, xs)) =>
+              !bindings.contains(arg) && xs.index(i).fold(false)(x => x == Var(arg))
+            case _ =>
+              throw new AssertionError("wat")
+          }
         }
-      }
-
-    IList(argBindings.toList.indices : _*).filter { (i: Int) =>
-      val arg = argBindings.index(i).get
-      recursiveCalls.all {
-        case (bindings, App(_, xs)) =>
-          !bindings.contains(arg) && xs.index(i).fold(false)(x => x == Var(arg))
-        case _ =>
-          throw new AssertionError("wat")
-      }
+      case _ =>
+        IList.empty
     }
-  }
 
-  def removeConstantArg(argIdx: Int): Term = {
-    val (NonEmptyList(fixBinding, argBindings), innerBody) = body.flatten
-    require(argBindings.length > argIdx)
-    val (leftArgs, otherArgs) = argBindings.splitAt(argIdx)
-    val (removedArg, rightArgs) = (otherArgs.headOption.get, otherArgs.tailOption.get)
-    val newInnerBody = innerBody.mapTermsContaining(ISet.singleton(fixBinding)) {
-      case App(f, xs) if f == Var(fixBinding) =>
-        require(xs.index(argIdx) == Some(Var(removedArg)), "this is not a constant argument")
-        f.apply(xs.list.removeAt(argIdx).get)
-      case other => other
-    }
-    val newFixBody = Lam(NonEmptyList.nel(fixBinding, leftArgs ++ rightArgs), newInnerBody)
-    val newFix = Fix(newFixBody, index)
-    Lam(leftArgs :+ removedArg, newFix.apply(leftArgs.map((x: Name) => Var(x).asInstanceOf[Term])))
+  def removeConstantArg(argIdx: Int): Term =
+    body match {
+      case body: Lam =>
+        val (NonEmptyList(fixBinding, argBindings), innerBody) = body.flatten
+        require(argBindings.length > argIdx)
+        val (leftArgs, otherArgs) = argBindings.splitAt(argIdx)
+        val (removedArg, rightArgs) = (otherArgs.headOption.get, otherArgs.tailOption.get)
+        val newInnerBody = innerBody.mapTermsContaining(ISet.singleton(fixBinding)) {
+          case App(f, xs) if f == Var(fixBinding) =>
+            require(xs.index(argIdx) == Some(Var(removedArg)), "this is not a constant argument")
+            f.apply(xs.list.removeAt(argIdx).get)
+          case other => other
+        }
+        val newFixBody = Lam(NonEmptyList.nel(fixBinding, leftArgs ++ rightArgs), newInnerBody)
+        val newFix = Fix(newFixBody, index)
+        Lam(leftArgs :+ removedArg, newFix.apply(leftArgs.map((x: Name) => Var(x).asInstanceOf[Term])))
+      case _ =>
+        throw new AssertionError("Cannot remove constant arguments from fixed-points with non-lambda bodies")
   }
 
   override def arbitraryOrderingNumber: Int = 3
@@ -142,43 +157,62 @@ case class Fix(body: Term,
     }
 
   // TODO implement this method for constructors with more or fewer than one recursive argument
-  def guessConstructorContext: Option[Context] = {
-    val fixArgs = body.flatten._1.tail
-    val explored = this.apply(fixArgs.map(n => Var(n): Term)).explore.filter(_ != Bot)
-    for {
-      potentialContext <- explored.headOption
-      constr <- potentialContext.leftmost match {
-        case constr: Constructor => Some(constr)
-        case _ => None
-      }
-      if constr.recursiveArgs.size == 1
-      recArgIdx = constr.recursiveArgs.toList.head
-      context = constr.apply(potentialContext.asInstanceOf[App].args.list.setAt(recArgIdx, Var(contextGap)))
-      if context.freeVars.delete(contextGap).isSubsetOf(this.freeVars)
-      if explored.all(t => context.unifyLeft(t).exists(_.boundVars == ISet.singleton(contextGap)))
-    } yield context
-  }
-
-  def fissionConstructorContext: Option[Term] = {
-    require(!freeVars.contains(contextGap), s"Don't use $contextGap as a variable name, it's used for context gaps.")
-    for {
-      ctx <- guessConstructorContext
-      fixArgs = body.flatten._1.tail
-      expandedCtx = Lam(fixArgs, ctx :/ (Var(body.binding).apply(fixArgs.map(n => Var.apply(n): Term)) / contextGap))
-      driven = body.apply(expandedCtx).drive
-      (fixArgs2, drivenBody) = driven.flattenLam
-      stripped <- drivenBody
-        .stripContext(ctx)
-        .tap(_ => assert(fixArgs == fixArgs2))
-    } yield Fix(Lam(body.binding, Lam(fixArgs, stripped)), index)
-  }
-
-  lazy val strictArgs: IList[Int] = {
-    val vars = body.body.flattenLam._1.map(x => Var(x): Term)
-    IList(0.until(argCount): _*).filter { i =>
-      val args = vars.setAt(i, Bot)
-      this.apply(args).drive == Bot
+  def guessConstructorContext: Option[Context] =
+    body match {
+      case body: Lam =>
+        val fixArgs = body.flatten._1.tail
+        val explored = this.apply(fixArgs.map(n => Var(n): Term)).explore.filter(_ != Bot)
+        for {
+          potentialContext <- explored.headOption
+          constr <- potentialContext.leftmost match {
+            case constr: Constructor => Some(constr)
+            case _ => None
+          }
+          if constr.recursiveArgs.size == 1
+          recArgIdx = constr.recursiveArgs.toList.head
+          context = C(ctxGap => constr.apply(potentialContext.asInstanceOf[App].args.list.setAt(recArgIdx, Var(ctxGap))))
+          if context.freeVars.isSubsetOf(this.freeVars)
+          if explored.all(t => context.strip(t).isDefined)
+        } yield context
+      case _ =>
+        None
     }
+
+  def fissionConstructorContext: Option[(Context, Term)] =
+    body match {
+      case body: Lam =>
+        for {
+          ctx <- guessConstructorContext
+          fixArgs = body.flatten._1.tail
+          expandedCtx = C(gap => Lam(fixArgs, ctx.apply(Var(gap).apply(fixArgs.map(n => Var.apply(n): Term)))))
+          driven = body.apply(expandedCtx.apply(Var(body.binding))).drive
+          (fixArgs2, drivenBody) = driven.flattenLam
+          stripped <- ctx
+            .strip(drivenBody)
+            .tap(_ => assert(fixArgs == fixArgs2))
+        } yield (expandedCtx, Fix(Lam(body.binding, Lam(fixArgs, stripped)), index))
+      case _ =>
+        None
+    }
+
+  lazy val strictArgIndices: IList[Int] =
+    body match {
+      case body: Lam =>
+        val vars = body.body.flattenLam._1.map(x => Var(x): Term)
+        IList(0.until(argCount): _*).filter { i =>
+          val args = vars.setAt(i, Bot)
+          this.apply(args).drive == Bot
+        }
+      case _ =>
+        IList.empty
+    }
+
+  final def strictArgs(args: IList[Term]): IList[Term] = {
+    var strict = IList.empty[Term]
+    strictArgIndices.toList.foreach { i =>
+      args.index(i).foreach { t => strict = t :: strict }
+    }
+    strict
   }
 
   override protected def getIndices = super.getIndices.insert(index)
@@ -191,10 +225,12 @@ object Fix {
   sealed abstract class Index
 
   case object Omega extends Index {
-    override def toString = "ω"
+    override def toString = ""
   }
 
   case class Finite(name: Name) extends Index {
-    override def toString = name.toString
+    override def toString = s"[$name]"
   }
+
+  def freshIndex: Finite = Finite(Name.fresh("α"))
 }

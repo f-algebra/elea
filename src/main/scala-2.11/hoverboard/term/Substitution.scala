@@ -60,7 +60,7 @@ case class Substitution private (toMap: IMap[Name, Term]) extends FirstOrder[Sub
   override def order(other: Substitution): Ordering =
     toMap ?|? other.toMap
 
-  override def zip(other: Substitution): Option[IList[(Context, Context)]] =
+  override def zip(other: Substitution): Option[IList[(Term, Term)]] =
     if (toMap.keySet == other.toMap.keySet) {
       Some(toMap.intersectionWith(other.toMap)((_, _)).values.toIList)
     } else {

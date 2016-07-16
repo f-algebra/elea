@@ -125,12 +125,16 @@ abstract class TermLike[This <: TermLike[This]] {
     }
 
   /**
-    * If two term-like things are of the same shape, zip up their matching immediate sub-terms.
+    * If two term-like things are of the same shape at the top level, zip up their matching immediate sub-terms.
     * [[None]] if they are not the same shape.
     */
   @inline
   def zip(other: This): Option[IList[(Term, Term)]]
 
+  /**
+    * If two term-like things are the same shape after renaming, zip up their matching immediate sub-terms
+    * applying the unifying renaming to the `other` term
+    */
   def uzip(other: This): Option[IList[(Term, Term)]]
 
   final def zipWith[A](other: This)(f: (Term, Term) => A): Option[IList[A]] =
@@ -162,11 +166,16 @@ abstract class TermLike[This <: TermLike[This]] {
     * @return
     */
   def removeIndices: This =
-    mapSubterms(_.removeIndices)
+    mapImmediateSubterms(_.removeIndices)
 
   /**
     * Replace all bound variables with fresh ones.
     * So far I think this is only useful for testing.
     */
   def freshen: This
+
+  /**
+    * Replace all [[Case.Index]] and [[Fix.Index]] with fresh ones. Used after reading a term definition.
+    */
+  def freshenIndices: This = mapImmediateSubterms(_.freshenIndices)
 }

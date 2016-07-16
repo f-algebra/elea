@@ -1,12 +1,14 @@
 package hoverboard
 
-import hoverboard.rewrite.Env
+import hoverboard.Supercompiler.Env
 import hoverboard.term._
 import org.scalacheck.Arbitrary
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Matchers, FlatSpec}
 
 class SupercompilerTest extends FlatSpec with Matchers with PropertyChecks {
+
+  import Util._
 
   implicit val termArb = Arbitrary(Arbitraries.term)
   implicit val program: Program = Program.prelude

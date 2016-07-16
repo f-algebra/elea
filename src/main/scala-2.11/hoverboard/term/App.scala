@@ -15,10 +15,10 @@ case class App(fun: Term, args: NonEmptyList[Term]) extends Term with FirstOrder
   override def driveHeadApp(env: Env, args2: NonEmptyList[Term]): Term =
     App(fun, args.append(args2))
 
-  override def driveHeadCase(env: Env, branches: NonEmptyList[Branch]): Term =
+  override def driveHeadCase(env: Env, enclosingCase: Case): Term =
     fun match {
-      case fun: Constructor => fun.reduceCase(args.list, branches).drive(env)
-      case _ => super.driveHeadCase(env, branches)
+      case fun: Constructor => fun.reduceCase(args.list, enclosingCase.branches).drive(env)
+      case _ => super.driveHeadCase(env, enclosingCase)
     }
 
   def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Term =
@@ -53,17 +53,14 @@ case class App(fun: Term, args: NonEmptyList[Term]) extends Term with FirstOrder
   override def deepBranches: IList[Term] =
     args.map(_.deepBranches).sequence.map(xs => App(fun, xs))
 
-  /**
-    * Is fixed-point promoted form
-    */
-  def isFPPF: Boolean =
-    fun.isInstanceOf[Fix] &&
-      args.all(_.isInstanceOf[Var]) &&
-      args.distinct == args &&
-      fun.freeVars.intersection(ISet.unions(args.map(_.freeVars).toList)).isEmpty
-
   override def unfold: Term =
     fun.unfold.betaReduce(args)
+
+  def isFPPF: Boolean =
+    fun match {
+      case fun: Fix => fun.isFPPF(args.list)
+      case _ => false
+    }
 }
 
 /**

@@ -1,12 +1,28 @@
 package hoverboard
 
-import hoverboard.rewrite.Env
 import hoverboard.term._
 
 import scalaz.Scalaz._
 import scalaz._
 
 object Supercompiler {
+
+  case class Fold(from: Term, to: Term)
+
+  case class Env(rewriteEnv: rewrite.Env,
+                 folds: IList[Fold]) {
+
+    def alreadySeen(term: Term): Boolean =
+      rewriteEnv.alreadySeen(term)
+
+    def havingSeen(term: Term): Env =
+      copy(rewriteEnv = rewriteEnv.havingSeen(term))
+  }
+
+  object Env {
+    def empty: Env =
+      Env(rewrite.Env.empty, IList.empty)
+  }
 
   class SubstitutionsNonUnifiableError(detailMsg: String) extends AssertionError(detailMsg)
 
@@ -51,7 +67,9 @@ object Supercompiler {
       case Seq(ctxVar) =>
         val newSkeletons = mergedGenSub.boundVars.map(x => ctx :/ Var(x) / ctxVar)
         val (critiquedCtx, critiquedSub) = critique(env)(newSkeletons, ctx :/ mergedCtxSub)
-        val fullSub = (critiquedSub ++ mergedGenSub).getOrElse { throw new SubstitutionsNonUnifiableError(s"$skeleton ++ $goal") }
+        val fullSub = (critiquedSub ++ mergedGenSub).getOrElse {
+          throw new SubstitutionsNonUnifiableError(s"$skeleton ++ $goal")
+        }
         (critiquedCtx, fullSub)
       case _ =>
         (ctx :/ mergedCtxSub, mergedGenSub)
@@ -69,7 +87,7 @@ object Supercompiler {
           goalFun.fissionConstructorContext match {
             case Some(fissionedFun) =>
               failure
-              // critique(env.havingSeen(goal), skeletons, )
+            // critique(env.havingSeen(goal), skeletons, )
             case None =>
               failure
           }
@@ -115,7 +133,15 @@ object Supercompiler {
 
   }
 
-  def supercompile(term: Term): Term = {
-    ???
-  }
+  def supercompile(term: Term): Term = ???
+   // supercompile(Env.empty, term)
+
+//  def supercompile(env: Env, term: Term): Term = {
+//    term match {
+//      case AppView(fun: Fix, args: IList[Term]) if !fun.isFPPF(args) =>
+//
+//      case _ =>
+//        term
+//    }
+//  }
 }

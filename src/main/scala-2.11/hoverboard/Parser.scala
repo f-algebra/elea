@@ -47,6 +47,7 @@ object Parser {
 
     val definedTerm: P[Term] = P(definitionName).map(n => program.definitionOf(n))
     val fixIndex: P[Name] = P("[" ~ varName ~ "]")
+    val caseIndex: P[Case.Index] = P(("[" ~ varName ~ "]").?).map(_.map(Case.Index).getOrElse(Case.freshIndex))
 
     val termVar: P[Term] = P(varName).map(Var)
     val simpleTerm: P[Term] = P(bot | unfold | termVar | definedTerm | "(" ~/ term ~ ")")
@@ -57,7 +58,7 @@ object Parser {
     val app: P[Term] = P(simpleTerm ~/ simpleTerm.rep).map(m => m._1(m._2 : _*))
     val bot: P[Term] = P("_|_").map(_ => Bot)
     val leq: P[Leq] = P("rel" ~/ term ~ "=<" ~/ term).map(m => Leq(m._1, m._2))
-    val caseOf: P[Term] = P("case" ~/ term ~ branch.rep(1) ~ "end").map(m => Case(m._1, IList(m._2 : _*).toNel.get))
+    val caseOf: P[Case] = P("case" ~/ caseIndex ~ term ~ branch.rep(1) ~ "end").map(m => Case(m._2, IList(m._3 : _*).toNel.get, m._1))
 
     val pattern: P[Pattern] = P(definedTerm ~ varName.rep).map(m => Pattern(m._1.asInstanceOf[Constructor], IList(m._2 : _*)))
     val branch: P[Branch] = {

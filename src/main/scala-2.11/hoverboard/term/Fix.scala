@@ -218,7 +218,27 @@ case class Fix(body: Term,
   override protected def getIndices = super.getIndices.insert(index)
 
   override def removeIndices: Term =
-    copy(index = Fix.Omega).mapSubterms(_.removeIndices)
+    copy(index = Fix.Omega).mapImmediateSubterms(_.removeIndices)
+
+  /**
+    * Is fixed-point promoted form
+    */
+  def isFPPF(args: IList[Term]): Boolean =
+    args.all(_.isInstanceOf[Var]) &&
+      args.distinct == args &&
+      freeVars.intersection(ISet.unions(args.map(_.freeVars).toList)).isEmpty
+
+  override def freshenIndices: Fix = copy(index = Fix.freshIndex)
+
+  final def criticalPair(args: IList[Term]): (IList[Case.Index], Term) =
+    this.unfold.apply(args).drive match {
+      case term: Case if term.matchedTerm.leftmost.isInstanceOf[Fix] =>
+        val AppView(matchFun: Fix, matchArgs: IList[Term]) = term.matchedTerm
+        val (matchPath, matchTerm) = matchFun.criticalPair(matchArgs)
+        (term.index :: matchPath, matchTerm)
+      case _ =>
+        (IList.empty[Case.Index], this.apply(args))
+    }
 }
 
 object Fix {

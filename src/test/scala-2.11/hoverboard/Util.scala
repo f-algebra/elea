@@ -20,7 +20,7 @@ object Util {
   implicit object ContextAlphaEq extends Equality[Context] {
     override def areEqual(a: Context, b: Any): Boolean =
       b match {
-        case b: Context => a =@= b
+        case b: Context => a.removeIndices =@= b.removeIndices
         case _ => false
       }
   }

@@ -16,18 +16,18 @@ let 2 = Suc 1 ;
 
 let And = fn p q -> case p | False -> False | True -> q end ;
 
-let Add = fix add x y -> case x | 0 -> y | Suc x' -> Suc (add x' y) end ;
-let Mul = fix mul x y -> case x | 0 -> 1 | Suc x' -> Add y (mul x' y) end ;
+let Add = fix add x y -> case[add] x | 0 -> y | Suc x' -> Suc (add x' y) end ;
+let Mul = fix mul x y -> case[mul] x | 0 -> 1 | Suc x' -> Add y (mul x' y) end ;
 
 let Lt = fix lt x y ->
-    case x
+    case[lt1] x
     | 0 ->
-        case y
+        case[lt11] y
         | 0 -> False
         | Suc y -> True
         end
     | Suc x ->
-        case y
+        case[lt12] y
         | 0 -> False
         | Suc y -> lt x y
         end
@@ -44,18 +44,19 @@ let LtEq = fix lteq x y ->
     end ;
 
 let Append = fix app xs ys ->
-    case xs
+    case[app] xs
     | Nil -> ys
     | Cons x xs' -> Cons x (app xs' ys)
     end ;
 
-let Snoc = fn y -> fix snoc xs -> case xs
+let Snoc = fn y -> fix snoc xs ->
+    case[snoc] xs
     | Nil -> Cons y Nil
     | Cons x xs' -> Cons x (snoc xs')
     end ;
 
 let Reverse = fix rev xs ->
-    case xs
+    case[rev] xs
     | Nil -> Nil
     | Cons x xs' -> Append (rev xs') (Cons x Nil)
     end ;
@@ -63,10 +64,10 @@ let Reverse = fix rev xs ->
 let Ones = fix ones -> Cons 1 ones ;
 
 let IsSorted = fix srtd xs ->
-    case xs
+    case[sorted1] xs
     | Nil -> True
     | Cons x xs' ->
-      case xs'
+      case[sorted2] xs'
       | Nil -> True
       | Cons y ys -> And (LtEq x y) (srtd xs')
       end

@@ -2,9 +2,10 @@ package hoverboard.term
 
 import hoverboard.Name
 
-import scalaz.ISet
+import scalaz.{Name => _, _}
+import Scalaz._
 
-final case class Context private(gap: Name, context: Term) {
+final case class Context private(gap: Name, context: Term) extends TermLike[Context] {
   def apply(term: Term): Term = context :/ term / gap
 
   def applyToBranches(caseOf: Case): Case = {
@@ -14,7 +15,7 @@ final case class Context private(gap: Name, context: Term) {
     caseOf.copy(branches = newBranches)
   }
 
-  lazy val freeVars: ISet[Name] = context.freeVars.delete(gap)
+  override protected def getFreeVars: ISet[Name] = context.freeVars.delete(gap)
 
   /**
     * Attempts to remove this context from the given term, returning what would be in the gap.
@@ -49,8 +50,34 @@ final case class Context private(gap: Name, context: Term) {
   def +(inner: Context): Context =
     composeWith(inner)
 
-  def =@=(other: Context): Boolean =
+  override def =@=(other: Context): Boolean =
     context =@= other.context :/ Var(gap) / other.gap
+
+  override def :/(substitution: Substitution): Context =
+    copy(context = context :/ substitution)
+
+  override def unifyLeft(to: Context): Option[Substitution] =
+    context unifyLeft (to.context :/ Var(gap) / to.gap)
+
+  override def order(other: Context): Ordering =
+    (gap ?|? other.gap) |+| (context ?|? other.context)
+
+  override def uzip(other: Context): Option[IList[(Term, Term)]] =
+    Some(IList((context, other.context :/ Var(gap) / other.gap)))
+
+  override def zip(other: Context): Option[IList[(Term, Term)]] =
+    Some(IList((context, other.context)))
+
+  override def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Context =
+    copy(context = f(ISet.empty, context))
+
+  override def couplingRule(other: Context): Boolean =
+    context embedsInto other.context
+
+  override def freshen: Context =
+    copy(context = context.freshen)
+
+  override def arbitraryOrderingNumber: Int = 1
 }
 
 object C {

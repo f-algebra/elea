@@ -6,29 +6,30 @@ import hoverboard._
 import scalaz.{Name => _, _}
 import Scalaz._
 
-case class Case(matchedTerm: Term, branches: NonEmptyList[Branch]) extends Term {
+case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.Index) extends Term {
 
   override def driveHead(env: Env): Term =
     if (branches.all(_.body == Bot))
       Bot
     else
-      matchedTerm.driveHeadCase(env, branches)
+      matchedTerm.driveHeadCase(env, this)
 
   override protected def driveSubterms(env: Env): Term =
-    Case(matchedTerm.drive(env), branches.map(_.drive(env, matchedTerm)))
+    copy(matchedTerm = matchedTerm.drive(env),
+      branches = branches.map(_.drive(env, matchedTerm)))
 
   override def driveHeadApp(env: Env, args: NonEmptyList[Term]): Term =
   // TODO slight improvement by not re-driving matched term here
   // Floating pattern matches out of function position
     C(x => App(Var(x), args)).applyToBranches(this).drive(env)
 
-  override def driveHeadCase(env: Env, outerBranches: NonEmptyList[Branch]): Term =
+  override def driveHeadCase(env: Env, enclosingCase: Case): Term =
   // TODO slight improvement by not re-driving matched term here
   // Case-case disributivity rule
-    C(x => Case(Var(x), outerBranches)).applyToBranches(this).drive(env)
+    C(x => enclosingCase.copy(matchedTerm = Var(x))).applyToBranches(this).drive(env)
 
   override def :/(sub: Substitution): Term =
-    Case(matchedTerm :/ sub, branches.map(_ :/ sub))
+    Case(matchedTerm :/ sub, branches.map(_ :/ sub), index)
 
   def unifyLeft(to: Term): Option[Substitution] =
     to match {
@@ -47,7 +48,8 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch]) extends Term 
     }
 
   def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Term =
-    Case(f(ISet.empty, matchedTerm), branches.map(_.mapImmediateSubtermsWithBindings(f)))
+    copy(matchedTerm = f(ISet.empty, matchedTerm),
+      branches = branches.map(_.mapImmediateSubtermsWithBindings(f)))
 
   override def toString = {
     "case " + matchedTerm.toString +
@@ -102,4 +104,11 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch]) extends Term 
 
   override def freshen =
     copy(branches = branches.map(_.freshen))
+
+  override def freshenIndices: Case = copy(index = Case.freshIndex)
+}
+
+object Case {
+  case class Index(name: Name)
+  def freshIndex = Index(Name.fresh("κ"))
 }

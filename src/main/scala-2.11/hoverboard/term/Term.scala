@@ -38,7 +38,7 @@ abstract class Term extends TermLike[Term] {
     * Drive given that this is a `matchedTerm` in a [[Case]] with the provided branches,
     * and when all sub-terms have already been driven.
     */
-  def driveHeadCase(env: Env, branches: NonEmptyList[Branch]): Term = Case(this, branches)
+  def driveHeadCase(env: Env, enclosingCase: Case): Term = enclosingCase.copy(matchedTerm = this)
 
   /**
     * Drive (simplify) all sub-terms of a term

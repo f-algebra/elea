@@ -167,8 +167,8 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks {
 
   "homeomorphic embedding" should "work properly" in {
     t"x" couplingRule t"Lt x (Suc x)" shouldBe false
-    t"Lt x (Suc x)" strictlyEmbedsInto t"Lt x (Suc x)" shouldBe false
-    t"Lt x (Suc x)" couplingRule t"Lt x (Suc x)" shouldBe true
+    t"Lt x (Suc x)".removeIndices strictlyEmbedsInto t"Lt x (Suc x)".removeIndices shouldBe false
+    t"Lt x (Suc x)".removeIndices couplingRule t"Lt x (Suc x)".removeIndices shouldBe true
   }
 
   "fppf" should "be recognisable" in {
@@ -204,7 +204,7 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks {
               ISet.fromFoldable(leftSub.toMap.values) shouldEqual ISet.singleton(leftSubTerm)
               ISet.fromFoldable(rightSub.toMap.values) shouldEqual ISet.singleton(rightSubTerm)
               val uniOpt = msgCtx.unifyLeft(ctx)
-              uniOpt should be('isDefined)
+              uniOpt should be ('isDefined)
               val Some(ctxUni) = uniOpt
               ISet.fromFoldable(ctxUni.toMap.values) shouldEqual ISet.singleton(Var(subVar))
               leftSub.toMap.keySet shouldEqual ctxUni.boundVars

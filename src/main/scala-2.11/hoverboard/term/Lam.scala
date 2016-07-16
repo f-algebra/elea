@@ -56,7 +56,7 @@ case class Lam(binding: Name, body: Term) extends Term {
   override def driveHeadApp(env: Env, args: NonEmptyList[Term]): Term =
     betaReduce(args).drive(env.havingSeen(App(this, args)))
 
-  override def driveHeadCase(env: Env, branches: NonEmptyList[Branch]): Term =
+  override def driveHeadCase(env: Env, enclosingCase: Case): Term =
     throw new IllegalStateException("Cannot pattern match a lambda")
 
   override def flattenLam: (IList[Name], Term) =

@@ -159,11 +159,10 @@ abstract class TermLike[This <: TermLike[This]] {
   def arbitraryOrderingNumber: Int
 
   override def hashCode: Int =
-    throw new IllegalAccessException("Don't use hash based collections for term-like things please")
+    throw new IllegalAccessException("Don't use hash based collections for term-like things")
 
   /**
     * Set all fix indices to [[Fix.Omega]]. Useful if you want to check equality modulo fix indices.
-    * @return
     */
   def removeIndices: This =
     mapImmediateSubterms(_.removeIndices)

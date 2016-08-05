@@ -1,4 +1,4 @@
-import hoverboard.term.Term
+import hoverboard.term.{Substitution, Term}
 
 import scalaz.{Name => _, _}
 import Scalaz._
@@ -18,8 +18,19 @@ package object hoverboard {
 
   implicit class WrappedStringContext(context: StringContext)(implicit program: Program) {
     def t(args: Any*): Term = {
-      val termDef = context.standardInterpolator(x => x, args.map(_.toString))
-      Parser.parseTerm(termDef)
+      // Any interpolated terms are replaced by variables for the parsing step, and then substituted
+      // for the provided term after parsing.
+      var termArgSubst = Substitution.empty
+      val argStrings: Seq[String] = args.map {
+        case arg: Term =>
+          val termVar = Name.fresh("__INTERPOLATOR__")
+          termArgSubst = termArgSubst +! (termVar -> arg)
+          termVar.toString
+        case arg =>
+          arg.toString
+      }
+      val termDef = context.standardInterpolator(x => x, argStrings)
+      Parser.parseTerm(termDef) :/ termArgSubst
     }
   }
 

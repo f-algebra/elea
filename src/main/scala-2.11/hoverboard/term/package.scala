@@ -1,10 +1,7 @@
 package hoverboard
 
-import hoverboard.term.Fix.Index
-import org.scalactic.Equality
-
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 
 package object term {
 

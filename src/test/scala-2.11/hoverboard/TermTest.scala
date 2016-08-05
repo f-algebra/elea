@@ -224,4 +224,18 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks {
       ctx shouldEqual t
     }
   }
+
+  "critical paths" should "be correctly detectable" in {
+    val AppView(addFun: Fix, addArgs) = t"Add (Add x y) z".drive
+    addFun.criticalPair(addArgs) shouldEqual
+      (IList(Case.Index("add")), t"Add x y".drive)
+
+    val AppView(sortFun1: Fix, sortArgs1) = t"IsSorted (Insert n xs)".drive
+    sortFun1.criticalPair(sortArgs1) shouldEqual
+      (IList(Case.Index("sorted1")), t"Insert n xs".drive)
+
+    val AppView(sortFun2: Fix, sortArgs2) = t"IsSorted (Cons x (Insert n xs))".drive
+    sortFun2.criticalPair(sortArgs2) shouldEqual
+      (IList(Case.Index("sorted2")), t"Insert n xs".drive)
+  }
 }

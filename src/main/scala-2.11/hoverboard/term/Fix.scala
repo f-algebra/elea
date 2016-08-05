@@ -33,30 +33,23 @@ case class Fix(body: Term,
 
   // TODO filter on decreasing/strict args
   override def driveHeadApp(env: Env, args: NonEmptyList[Term]): Term = {
-    // val strictArgs = this.strictArgs(args.list)
-    None // strictArgs.find(_.isInstanceOf[Case])
-      .map { case arg: Case =>
-        Bot
-      }
-      .getOrElse {
-        body match {
-          case body: Lam if args.any(t => t.leftmost.isInstanceOf[Constructor] || t == Bot) =>
-            val originalTerm = App(this, args)
-            val driven = App(body.body, args).drive(env)
-            val wasProductive = driven.terms.all {
-              case term@App(Var(f), xs) if f == body.binding =>
-                term.strictlyEmbedsInto(App(Var(f), args))
-              case _ =>
-                true
-            }
-            if (wasProductive)
-              (driven :/ (this / body.binding)).drive(env.havingSeen(originalTerm))
-            else
-              super.driveHeadApp(env, args)
+    body match {
+      case body: Lam if args.any(t => t.leftmost.isInstanceOf[Constructor] || t == Bot) =>
+        val originalTerm = App(this, args)
+        val driven = App(body.body, args).drive(env)
+        lazy val wasProductive = driven.terms.all {
+          case term@App(Var(f), xs) if f == body.binding =>
+            term.strictlyEmbedsInto(App(Var(f), args))
           case _ =>
-            super.driveHeadApp(env, args)
+            true
         }
-      }
+        if (!driven.isInstanceOf[Case] && wasProductive)
+          (driven :/ (this / body.binding)).drive(env.havingSeen(originalTerm))
+        else
+          super.driveHeadApp(env, args)
+      case _ =>
+        super.driveHeadApp(env, args)
+    }
   }
 
   override def unfold: Term = body.betaReduce(NonEmptyList(this))

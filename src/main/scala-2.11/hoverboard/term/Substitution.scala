@@ -49,6 +49,15 @@ case class Substitution private (toMap: IMap[Name, Term]) extends FirstOrder[Sub
     }
   }
 
+  /**
+    * Add a mapping to this substitution for a variable which you know is not already mapped by the substitution.
+    * For example, a mapping from a fresh variable.
+    */
+  def +!(elem: (Name, Term)): Substitution = {
+    require(!boundVars.contains(elem._1), s"${elem._1} already exists in this substitution")
+    (this + elem).get
+  }
+
   def ++(other: Substitution): Option[Substitution] =
     other.toMap.toList.foldLeft[Option[Substitution]](Some(this))((sub, elem) => sub.flatMap(_ + elem))
 

@@ -71,9 +71,11 @@ class DrivingTest extends FlatSpec with Matchers with PropertyChecks {
     t"Reverse (Cons x xs)".drive shouldEqual t"Append (Reverse xs) (Cons x Nil)".drive
   }
 
-  it should "not unfold fixed points with constructor arguments unsafely" in {
+  it should "not unfold fixed points with constructor arguments dangerously" in {
     t"Lt x (Suc x)".drive shouldEqual t"Lt x (Suc x)"
     t"LtEq (Suc x) x".drive shouldEqual t"LtEq (Suc x) x"
+    t"IsSorted (Cons x xs)".drive shouldEqual t"IsSorted (Cons x xs)"
+    t"IsSorted (Cons x (Insert n xs))".drive shouldEqual t"IsSorted (Cons x (Insert n xs))"
   }
 
   it should "not add fixed-point indices" in {

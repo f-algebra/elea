@@ -73,6 +73,22 @@ let IsSorted = fix srtd xs ->
       end
     end ;
 
+let Insert = fix ins n xs ->
+    case[ins1] xs
+    | Nil -> Cons n Nil
+    | Cons x xs' ->
+      case[ins2] LtEq n x
+      | True -> Cons n xs
+      | False -> Cons x (ins n xs')
+      end
+    end ;
+
+let InsertSort = fix isort xs ->
+    case[isort1] xs
+    | Nil -> Nil
+    | Cons x xs' -> Insert x (isort xs')
+    end ;
+
 let Flatten = fix flat t ->
     case t
     | Leaf -> Leaf

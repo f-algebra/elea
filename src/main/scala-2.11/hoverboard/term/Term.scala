@@ -118,10 +118,10 @@ abstract class Term extends TermLike[Term] {
     this.embedsInto(other) && !other.embedsInto(this)
 
   final def mostSpecificGeneralisation(other: Term): (Term, Substitution, Substitution) =
-    this ⨅ other
+    this ᴨ other
 
-  final def ⨅(other: Term): (Term, Substitution, Substitution) =
-    uzipWith(other)(_ ⨅ _) match {
+  final def ᴨ(other: Term): (Term, Substitution, Substitution) =
+    uzipWith(other)(_ ᴨ _) match {
       case None =>
         val newVar = Name.fresh("γ")
         (Var(newVar), this / newVar, other / newVar)
@@ -142,6 +142,21 @@ abstract class Term extends TermLike[Term] {
         } else {
           (newCtx, thisSub, otherSub)
         }
+    }
+
+  /**
+    * Replace occurrences of `from` with `to` in this term and all its sub-terms
+    */
+  final def replace(from: Term, to: Term): Term =
+    if (from === to)
+      to
+    else {
+      mapImmediateSubtermsWithBindings {
+        case (bindings, term) if from.freeVars.intersection(bindings).isEmpty =>
+          term.replace(from, to)
+        case (bindings, term) =>
+          term
+      }
     }
 
   /**

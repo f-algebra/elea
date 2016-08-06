@@ -179,7 +179,7 @@ class TermTest extends TestConfig {
   }
 
   def msgWithSanityCheck(t1: Term, t2: Term): (Term, Substitution, Substitution) = {
-    val (ctx, sub1, sub2) = t1 ⨅ t2
+    val (ctx, sub1, sub2) = t1 ᴨ t2
     ctx :/ sub1 shouldEqual t1
     ctx :/ sub2 shouldEqual t2
     sub1.toMap.keySet shouldEqual sub2.toMap.keySet

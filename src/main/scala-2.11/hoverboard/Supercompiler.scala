@@ -7,7 +7,7 @@ import scalaz._
 
 object Supercompiler {
 
-  case class Fold(from: Term, to: Term)
+  case class Fold(criticalPair: CriticalPair, from: Term, to: Term)
 
   case class Env(rewriteEnv: rewrite.Env,
                  folds: IList[Fold]) {
@@ -17,6 +17,17 @@ object Supercompiler {
 
     def havingSeen(term: Term): Env =
       copy(rewriteEnv = rewriteEnv.havingSeen(term))
+
+    def withMatch(term: Term, pattern: Pattern): Env =
+      copy(rewriteEnv = rewriteEnv.withMatch(term, pattern))
+
+    def withBindings(bindings: ISet[Name]): Env =
+      copy(rewriteEnv = rewriteEnv.withBindings(bindings))
+
+    def withFold(fold: Fold): Env =
+      copy(folds = folds :+ fold)
+
+    def bindingsSet: ISet[Name] = rewriteEnv.bindingsSet
   }
 
   object Env {
@@ -58,7 +69,7 @@ object Supercompiler {
     }
 
   final def couple(env: Env)(skeleton: Term, goal: Term): (Term, Substitution) = {
-    val (ctx, skelSub, goalSub) = skeleton ⨅ goal
+    val (ctx, skelSub, goalSub) = skeleton ᴨ goal
     val rippled: IMap[Name, (Term, Substitution)] =
       skelSub.toMap.intersectionWith(goalSub.toMap)(ripple(env))
     val (mergedCtxSub, mergedGenSub) = mergeRipples(rippled)
@@ -109,15 +120,45 @@ object Supercompiler {
           dive(env)(skeleton, goal)
     }
 
-  def supercompile(term: Term): Term = ???
-   // supercompile(Env.empty, term)
+  def supercompile(term: Term): Term =
+    supercompile(Env.empty, term)
 
-//  def supercompile(env: Env, term: Term): Term = {
-//    term match {
-//      case AppView(fun: Fix, args: IList[Term]) if !fun.isFPPF(args) =>
-//
-//      case _ =>
-//        term
-//    }
-//  }
+  def supercompile(env: Env, term: Term): Term = {
+    term match {
+      case AppView(fun: Fix, args: IList[Term]) if !fun.isFPPF(args) =>
+        val cp = CriticalPair.of(fun, args)
+        env.folds.find(cp embedsInto _.criticalPair) match {
+          case None =>
+            // No existing fold has a matching critical path, so we should continue unrolling
+            val foldVar = Name.fresh("μ")
+            val foldFrom = fun.apply(args)
+            val foldTo = Var(foldVar).apply(foldFrom.freeVars.toIList.map(Var(_): Term))
+            val newEnv = env.withFold(Fold(cp, foldFrom, foldTo))
+            supercompile(newEnv, foldFrom.replace(cp.term, cp.termUnfolded).drive(env.rewriteEnv))
+          case Some(fold) =>
+            // Dunno...
+            ???
+        }
+      case term: Case =>
+        // Descend into the branches of pattern matches
+        val newBranches = term.branches.map(supercompileBranch(env, term.matchedTerm))
+        term.copy(branches = newBranches)
+      case _ =>
+        term
+    }
+  }
+
+  /**
+    * Supercompile the body of a pattern match branch,
+    * safely (without variable capture) adding the matched pattern into the environment
+    */
+  def supercompileBranch(env: Env, matchedTerm: Term)(branch: Branch): Branch = {
+    branch match {
+      case branch: DefaultBranch =>
+        branch.copy(body = supercompile(env, branch.body))
+      case branch: PatternBranch =>
+        val freshBranch = branch.avoidCapture(env.bindingsSet.union(matchedTerm.freeVars))
+        branch.copy(body = supercompile(env.withMatch(matchedTerm, branch.pattern), branch.body))
+    }
+  }
 }

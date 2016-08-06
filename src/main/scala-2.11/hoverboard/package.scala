@@ -53,6 +53,16 @@ package object hoverboard {
           val (tail1, tail2, tail3) = tail.unzip3
           (ICons(ev(head)._1, tail1), ICons(ev(head)._2, tail2), ICons(ev(head)._3, tail3))
       }
+
+    def embedsInto(other: IList[A]): Boolean =
+      (list, other) match {
+        case (INil(), _) => true
+        case (_, INil()) => false
+        case (ICons(x, xs), ICons(y, ys)) if x == y =>
+          xs embedsInto ys
+        case (xs, ICons(_, ys)) =>
+          xs embedsInto ys
+      }
   }
 
   def first[A, B, C](p: (A, B))(f: A => C): (C, B) = (f(p._1), p._2)

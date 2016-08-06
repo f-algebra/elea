@@ -6,21 +6,21 @@ import org.scalacheck.Arbitrary
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Matchers, FlatSpec}
 
-class SupercompilerTest extends FlatSpec with Matchers with PropertyChecks with TestConfig {
+class SupercompilerTest extends TestConfig {
 
   import Util._
 
-  "unfold" should "correctly unfold strict fixed-points" in {
-    Supercompiler.unfold(t"Reverse (Reverse xs)") shouldEqual
-      t"Reverse (unfold Reverse xs)"
-    Supercompiler.unfold(t"Lt (Add x y) (Add n m)") shouldEqual
-      t"Lt (unfold Add x y) (unfold Add n m)"
-  }
-
-  it should "unfold fixed-points without arguments" in {
-    Supercompiler.unfold(t"Ones") shouldEqual t"unfold Ones"
-    Supercompiler.unfold(t"Reverse Ones") shouldEqual t"Reverse (unfold Ones)"
-  }
+//  "unfold" should "correctly unfold strict fixed-points" in {
+//    Supercompiler.unfold(t"Reverse (Reverse xs)") shouldEqual
+//      t"Reverse (unfold Reverse xs)"
+//    Supercompiler.unfold(t"Lt (Add x y) (Add n m)") shouldEqual
+//      t"Lt (unfold Add x y) (unfold Add n m)"
+//  }
+//
+//  it should "unfold fixed-points without arguments" in {
+//    Supercompiler.unfold(t"Ones") shouldEqual t"unfold Ones"
+//    Supercompiler.unfold(t"Reverse Ones") shouldEqual t"Reverse (unfold Ones)"
+//  }
 
   def rippleWithSuccessCheck(skeleton: Term, goal: Term): (Term, Substitution) = {
     val (drivenGoal, drivenSkel) = (goal.drive, skeleton.drive)

@@ -222,16 +222,6 @@ case class Fix(body: Term,
       freeVars.intersection(ISet.unions(args.map(_.freeVars).toList)).isEmpty
 
   override def freshenIndices: Fix = copy(index = Fix.freshIndex)
-
-  final def criticalPair(args: IList[Term]): (IList[Case.Index], Term) =
-    this.unfold.apply(args).drive match {
-      case term: Case if term.matchedTerm.leftmost.isInstanceOf[Fix] =>
-        val AppView(matchFun: Fix, matchArgs: IList[Term]) = term.matchedTerm
-        val (matchPath, matchTerm) = matchFun.criticalPair(matchArgs)
-        (term.index :: matchPath, matchTerm)
-      case _ =>
-        (IList.empty[Case.Index], this.apply(args))
-    }
 }
 
 object Fix {

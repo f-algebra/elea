@@ -4,7 +4,7 @@ import hoverboard.term.Term
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
 
-class DrivingTest extends FlatSpec with Matchers with PropertyChecks with TestConfig {
+class DrivingTest extends TestConfig {
 
   import Util._
 

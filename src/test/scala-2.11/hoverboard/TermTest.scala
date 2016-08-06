@@ -8,7 +8,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import scalaz.Scalaz._
 import scalaz._
 
-class TermTest extends FlatSpec with Matchers with PropertyChecks with TestConfig {
+class TermTest extends TestConfig {
 
   import Util._
 
@@ -218,27 +218,5 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks with TestConfi
       sub2.isEmpty shouldBe true
       ctx shouldEqual t
     }
-  }
-
-  "critical paths" should "be correctly detectable" in {
-    val AppView(addFun: Fix, addArgs) = t"Add (Add x y) z".drive
-    addFun.criticalPair(addArgs) shouldEqual
-      (IList(Case.Index("add")), t"Add x y".drive)
-
-    val AppView(sortFun1: Fix, sortArgs1) = t"IsSorted (Insert n xs)".drive
-    sortFun1.criticalPair(sortArgs1) shouldEqual
-      (IList(Case.Index("sorted1")), t"Insert n xs".drive)
-
-    val AppView(sortFun2: Fix, sortArgs2) = t"IsSorted (Cons x (Insert n xs))".drive
-    sortFun2.criticalPair(sortArgs2) shouldEqual
-      (IList(Case.Index("sorted2")), t"Insert n xs".drive)
-
-    val AppView(revFun1: Fix, revArgs1) = t"Reverse (Reverse xs)".drive
-    revFun1.criticalPair(revArgs1) shouldEqual
-      (IList(Case.Index("rev")), t"Reverse xs".drive)
-
-    val AppView(revFun2: Fix, revArgs2) = t"Reverse (Append (Reverse xs) (Cons x Nil))".drive
-    revFun2.criticalPair(revArgs2) shouldEqual
-      (IList(Case.Index("rev"), Case.Index("app")), t"Reverse xs".drive)
   }
 }

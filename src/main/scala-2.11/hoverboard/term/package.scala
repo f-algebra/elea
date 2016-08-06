@@ -24,4 +24,6 @@ package object term {
     case (_, Omega) => LT
     case (Finite(n), Finite(m)) => n ?|? m
   }
+
+  implicit def stringToCaseIndex(name: String): Case.Index = Case.Index(Name(name))
 }

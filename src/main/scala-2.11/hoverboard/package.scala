@@ -62,4 +62,6 @@ package object hoverboard {
       fun(a); a
     }
   }
+
+  implicit def stringToName(name: String): Name = Name(name)
 }

@@ -6,12 +6,9 @@ import org.scalacheck.Arbitrary
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Matchers, FlatSpec}
 
-class SupercompilerTest extends FlatSpec with Matchers with PropertyChecks {
+class SupercompilerTest extends FlatSpec with Matchers with PropertyChecks with TestConfig {
 
   import Util._
-
-  implicit val termArb = Arbitrary(Arbitraries.term)
-  implicit val program: Program = Program.prelude
 
   "unfold" should "correctly unfold strict fixed-points" in {
     Supercompiler.unfold(t"Reverse (Reverse xs)") shouldEqual

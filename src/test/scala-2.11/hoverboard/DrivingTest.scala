@@ -1,23 +1,12 @@
 package hoverboard
 
 import hoverboard.term.Term
-import org.scalacheck.Arbitrary
 import org.scalatest.prop.PropertyChecks
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.{FlatSpec, Matchers}
 
-import scala.concurrent.{Await, Future, ExecutionContext}
-import scala.concurrent.duration._
-
-class DrivingTest extends FlatSpec with Matchers with PropertyChecks {
+class DrivingTest extends FlatSpec with Matchers with PropertyChecks with TestConfig {
 
   import Util._
-  import ExecutionContext.Implicits._
-
-  implicit val termArb = Arbitrary(Arbitraries.term)
-  implicit val program: Program = Program.prelude
-
-  // TODO remove this when finished 1.0
-  override implicit val generatorDrivenConfig = PropertyCheckConfig(minSuccessful = 8)
 
   "driving" should "perform beta reduction" in {
     t"(fn x -> x) y".drive shouldEqual t"y"
@@ -75,7 +64,7 @@ class DrivingTest extends FlatSpec with Matchers with PropertyChecks {
     t"Lt x (Suc x)".drive shouldEqual t"Lt x (Suc x)"
     t"LtEq (Suc x) x".drive shouldEqual t"LtEq (Suc x) x"
     t"IsSorted (Cons x xs)".drive shouldEqual t"IsSorted (Cons x xs)"
-    t"IsSorted (Cons x (Insert n xs))".drive shouldEqual t"IsSorted (Cons x (Insert n xs))"
+    t"IsSorted (Cons x (Insert n xs))".drive shouldEqual t"IsSorted (Cons x ${t"Insert n xs".drive})"
   }
 
   it should "not add fixed-point indices" in {

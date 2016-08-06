@@ -109,29 +109,29 @@ object Supercompiler {
           dive(env)(skeleton, goal)
     }
 
-  final def unfold(term: Term): Term = {
+  final def unfold(term: Term): Term = ??? // {
+  // Now using critical pairs
     // Should be used like, while !terms.any(_ embedsInto x) x = x.unfold
-    term match {
-      case AppView(fix: Fix, args) =>
-        val strictArgs = fix.strictArgIndices.filter { i =>
-          args.index(i) match {
-            case Some(AppView(f: Fix, _)) => true
-            case _ => false
-          }
-        }
-        if (strictArgs.isEmpty)
-          fix.unfold.apply(args)
-        else {
-          val newArgs = strictArgs.foldl[IList[Term]](args) { args => n =>
-            args.setAt(n, unfold(args.index(n).get))
-          }
-          fix.apply(newArgs)
-        }
-      case _ =>
-        throw new IllegalArgumentException("Can only unfold a term with a fixed-point leftmost")
-    }
-
-  }
+//    term match {
+//      case AppView(fix: Fix, args) =>
+//        val strictArgs = fix.strictArgIndices.filter { i =>
+//          args.index(i) match {
+//            case Some(AppView(f: Fix, _)) => true
+//            case _ => false
+//          }
+//        }
+//        if (strictArgs.isEmpty)
+//          fix.unfold.apply(args)
+//        else {
+//          val newArgs = strictArgs.foldl[IList[Term]](args) { args => n =>
+//            args.setAt(n, unfold(args.index(n).get))
+//          }
+//          fix.apply(newArgs)
+//        }
+//      case _ =>
+//        throw new IllegalArgumentException("Can only unfold a term with a fixed-point leftmost")
+//    }
+//  }
 
   def supercompile(term: Term): Term = ???
    // supercompile(Env.empty, term)

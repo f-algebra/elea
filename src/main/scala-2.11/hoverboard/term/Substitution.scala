@@ -63,6 +63,8 @@ case class Substitution private (toMap: IMap[Name, Term]) extends FirstOrder[Sub
 
   def apply(term: Term): Term = term :/ this
 
+  def size: Int = toMap.size
+
   override def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Substitution =
     copy(toMap = toMap.map(f(ISet.empty, _)))
 

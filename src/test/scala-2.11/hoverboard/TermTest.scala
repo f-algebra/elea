@@ -8,14 +8,9 @@ import org.scalatest.{FlatSpec, Matchers}
 import scalaz.Scalaz._
 import scalaz._
 
-class TermTest extends FlatSpec with Matchers with PropertyChecks {
+class TermTest extends FlatSpec with Matchers with PropertyChecks with TestConfig {
 
   import Util._
-  implicit val program: Program = Program.prelude
-  implicit val termArb = Arbitrary(Arbitraries.term)
-
-  // TODO remove this when finished 1.0
-  override implicit val generatorDrivenConfig = PropertyCheckConfig(minSuccessful = 5)
 
   "substitution" should "replace variables" in {
     t"x" :/ t"f x" / "x" shouldBe t"f x"
@@ -237,5 +232,13 @@ class TermTest extends FlatSpec with Matchers with PropertyChecks {
     val AppView(sortFun2: Fix, sortArgs2) = t"IsSorted (Cons x (Insert n xs))".drive
     sortFun2.criticalPair(sortArgs2) shouldEqual
       (IList(Case.Index("sorted2")), t"Insert n xs".drive)
+
+    val AppView(revFun1: Fix, revArgs1) = t"Reverse (Reverse xs)".drive
+    revFun1.criticalPair(revArgs1) shouldEqual
+      (IList(Case.Index("rev")), t"Reverse xs".drive)
+
+    val AppView(revFun2: Fix, revArgs2) = t"Reverse (Append (Reverse xs) (Cons x Nil))".drive
+    revFun2.criticalPair(revArgs2) shouldEqual
+      (IList(Case.Index("rev"), Case.Index("app")), t"Reverse xs".drive)
   }
 }

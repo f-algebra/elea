@@ -23,7 +23,7 @@ package object hoverboard {
       var termArgSubst = Substitution.empty
       val argStrings: Seq[String] = args.map {
         case arg: Term =>
-          val termVar = Name.fresh("__INTERPOLATOR__")
+          val termVar = Name("__INTERPOLATED" + termArgSubst.size)
           termArgSubst = termArgSubst +! (termVar -> arg)
           termVar.toString
         case arg =>

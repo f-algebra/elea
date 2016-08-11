@@ -14,19 +14,23 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
     else
       matchedTerm.driveHeadCase(env, this)
 
+  def driveBranches(env: Env): Case =
+    copy(branches = branches.map(_.drive(env, matchedTerm)))
+
   override protected def driveSubterms(env: Env): Term =
-    copy(matchedTerm = matchedTerm.drive(env),
-      branches = branches.map(_.drive(env, matchedTerm)))
+    copy(matchedTerm = matchedTerm.drive(env)).driveBranches(env)
 
-  override def driveHeadApp(env: Env, args: NonEmptyList[Term]): Term =
-  // TODO slight improvement by not re-driving matched term here
   // Floating pattern matches out of function position
-    C(x => App(Var(x), args)).applyToBranches(this).drive(env)
+  override def driveHeadApp(env: Env, args: NonEmptyList[Term]): Term =
+    C(x => App(Var(x), args))
+      .applyToBranches(this)
+      .driveBranches(env)
 
-  override def driveHeadCase(env: Env, enclosingCase: Case): Term =
-  // TODO slight improvement by not re-driving matched term here
   // Case-case disributivity rule
-    C(x => enclosingCase.copy(matchedTerm = Var(x))).applyToBranches(this).drive(env)
+  override def driveHeadCase(env: Env, enclosingCase: Case): Term =
+    C(x => enclosingCase.copy(matchedTerm = Var(x)))
+      .applyToBranches(this)
+      .driveBranches(env)
 
   override def :/(sub: Substitution): Term =
     Case(matchedTerm :/ sub, branches.map(_ :/ sub), index)
@@ -52,7 +56,7 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
       branches = branches.map(_.mapImmediateSubtermsWithBindings(f)))
 
   override def toString = {
-    "case " + matchedTerm.toString +
+    s"case[$index] $matchedTerm" +
       branches.map("\n" + _.toString).concatenate.indent +
       "\nend"
   }
@@ -109,6 +113,9 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
 }
 
 object Case {
-  case class Index(name: Name)
+  case class Index(name: Name) {
+    override def toString: String = name.toString
+  }
+
   def freshIndex = Index(Name.fresh("κ"))
 }

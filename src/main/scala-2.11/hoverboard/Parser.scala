@@ -56,7 +56,7 @@ object Parser {
       .map(m => Fix(Lam(IList(m._2 : _*).toNel.get, m._3), m._1.map(Fix.Finite).getOrElse(Fix.freshIndex)))
     val lam: P[Term] = P("fn" ~/ varName.rep(1) ~ "->" ~ term).map(m => Lam(IList(m._1 : _*), m._2))
     val app: P[Term] = P(simpleTerm ~/ simpleTerm.rep).map(m => m._1(m._2 : _*))
-    val bot: P[Term] = P("_|_").map(_ => Bot)
+    val bot: P[Term] = P("_|_" | "⊥").map(_ => Bot)
     val leq: P[Leq] = P("rel" ~/ term ~ "=<" ~/ term).map(m => Leq(m._1, m._2))
     val caseOf: P[Case] = P("case" ~/ caseIndex ~ term ~ branch.rep(1) ~ "end").map(m => Case(m._2, IList(m._3 : _*).toNel.get, m._1))
 

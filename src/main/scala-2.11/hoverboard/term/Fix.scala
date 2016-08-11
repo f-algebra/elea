@@ -33,22 +33,34 @@ case class Fix(body: Term,
 
   // TODO filter on decreasing/strict args
   override def driveHeadApp(env: Env, args: NonEmptyList[Term]): Term = {
-    body match {
-      case body: Lam if args.any(t => t.leftmost.isInstanceOf[Constructor] || t == Bot) =>
-        val originalTerm = App(this, args)
-        val driven = App(body.body, args).drive(env)
-        lazy val wasProductive = driven.terms.all {
-          case term@App(Var(f), xs) if f == body.binding =>
-            term.strictlyEmbedsInto(App(Var(f), args))
+    strictArgIndices.find(args.index(_).get.isInstanceOf[Case]) match {
+      case Some(caseIdx) =>
+        // If a pattern match is a strict argument to a fixed-point,
+        // we can float it out to be topmost
+        val caseArg = args.index(caseIdx).get.asInstanceOf[Case]
+        C(x => this.apply(args.list.setAt(caseIdx, Var(x))))
+          .applyToBranches(caseArg)
+          .driveBranches(env)
+      case None =>
+        body match {
+          case body: Lam if args.any(t => t.leftmost.isInstanceOf[Constructor] || t == ⊥) =>
+            // If an argument to a fixed-point is a constructor or a ⊥, we can try to unfold
+            // the fixed-point
+            val originalTerm = App(this, args)
+            val driven = App(body.body, args).drive(env)
+            lazy val wasProductive = driven.terms.all {
+              case term@App(Var(f), xs) if f == body.binding =>
+                term.strictlyEmbedsInto(App(Var(f), args))
+              case _ =>
+                true
+            }
+            if (!driven.isInstanceOf[Case] && wasProductive)
+              (driven :/ (this / body.binding)).drive(env.havingSeen(originalTerm))
+            else
+              super.driveHeadApp(env, args)
           case _ =>
-            true
+            super.driveHeadApp(env, args)
         }
-        if (!driven.isInstanceOf[Case] && wasProductive)
-          (driven :/ (this / body.binding)).drive(env.havingSeen(originalTerm))
-        else
-          super.driveHeadApp(env, args)
-      case _ =>
-        super.driveHeadApp(env, args)
     }
   }
 
@@ -171,7 +183,7 @@ case class Fix(body: Term,
         None
     }
 
-  def fissionConstructorContext: Option[(Context, Term)] =
+  def fissionConstructorContext: Option[(Context, Fix)] =
     body match {
       case body: Lam =>
         for {
@@ -194,7 +206,7 @@ case class Fix(body: Term,
         val vars = body.body.flattenLam._1.map(x => Var(x): Term)
         IList(0.until(argCount): _*).filter { i =>
           val args = vars.setAt(i, Bot)
-          this.apply(args).drive == Bot
+          body.body.apply(args).drive == Bot
         }
       case _ =>
         IList.empty
@@ -208,7 +220,7 @@ case class Fix(body: Term,
     strict
   }
 
-  override protected def getIndices = super.getIndices.insert(index)
+  override lazy val indices = super.indices.insert(index)
 
   override def removeIndices: Term =
     copy(index = Fix.Omega).mapImmediateSubterms(_.removeIndices)

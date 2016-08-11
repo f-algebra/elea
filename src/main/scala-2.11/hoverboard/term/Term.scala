@@ -145,10 +145,10 @@ abstract class Term extends TermLike[Term] {
     }
 
   /**
-    * Replace occurrences of `from` with `to` in this term and all its sub-terms
+    * Replace occurrences (modulo alpha-equality) of `from` with `to` in this term and all its sub-terms
     */
   final def replace(from: Term, to: Term): Term =
-    if (from === to)
+    if (this =@= from)
       to
     else {
       mapImmediateSubtermsWithBindings {
@@ -157,6 +157,15 @@ abstract class Term extends TermLike[Term] {
         case (bindings, term) =>
           term
       }
+    }
+
+  /**
+    * Generalise the given list of terms within this term.
+    */
+  final def generalise(termsToGeneralise: IList[Term]): (Term, IList[Name]) =
+    termsToGeneralise.foldLeft((this, IList.empty[Name])) { case ((genTerm, genVars), termToGen) =>
+      val genVar = Name.fresh("γ")
+      (genTerm.replace(termToGen, Var(genVar)), genVars :+ genVar)
     }
 
   /**

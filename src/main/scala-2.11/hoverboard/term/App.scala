@@ -6,14 +6,16 @@ import hoverboard.rewrite.Env
 import scalaz.Scalaz._
 import scalaz.{Name => _, _}
 
-case class App(fun: Term, args: NonEmptyList[Term]) extends Term with FirstOrder[Term] {
+case class App private(fun: Term, args: NonEmptyList[Term]) extends Term with FirstOrder[Term] {
+  require(!fun.isInstanceOf[App])
+
   override def apply(args2: IList[Term]) = App(fun, args :::> args2)
 
   override def driveHead(env: Env): Term =
     fun.driveHeadApp(env, args)
 
   override def driveHeadApp(env: Env, args2: NonEmptyList[Term]): Term =
-    App(fun, args.append(args2))
+    apply(args2.list)
 
   override def driveHeadCase(env: Env, enclosingCase: Case): Term =
     fun match {
@@ -21,8 +23,16 @@ case class App(fun: Term, args: NonEmptyList[Term]) extends Term with FirstOrder
       case _ => super.driveHeadCase(env, enclosingCase)
     }
 
+  private def flatten: App =
+    fun match {
+      case fun: App =>
+        App(fun.fun, fun.args append args)
+      case _ =>
+        this
+    }
+
   def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Term =
-    App(f(ISet.empty, fun), args.map(t => f(ISet.empty, t)))
+    App(f(ISet.empty, fun), args.map(t => f(ISet.empty, t)).list)
 
   override def toString = {
     def bracketIfNeeded(str: String) =
@@ -60,6 +70,18 @@ case class App(fun: Term, args: NonEmptyList[Term]) extends Term with FirstOrder
     fun match {
       case fun: Fix => fun.isFPPF(args.list)
       case _ => false
+    }
+}
+
+object App {
+  def apply(fun: Term, args: IList[Term]): Term =
+    fun match {
+      case fun: App =>
+        fun.apply(args)
+      case _ =>
+        args.toNel
+          .map(App(fun, _))
+          .getOrElse(fun)
     }
 }
 

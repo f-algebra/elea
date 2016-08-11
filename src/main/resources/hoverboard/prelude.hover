@@ -61,6 +61,12 @@ let Reverse = fix rev xs ->
     | Cons x xs' -> Append (rev xs') (Cons x Nil)
     end ;
 
+let ReverseSnoc = fn y -> fix rev xs ->
+    case xs
+    | Nil -> Cons y Nil
+    | Cons x xs' -> Append (rev xs') (Cons x Nil)
+    end ;
+
 let Ones = fix ones -> Cons 1 ones ;
 
 let IsSorted = fix srtd xs ->

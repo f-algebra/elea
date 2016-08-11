@@ -8,7 +8,7 @@ import Scalaz._
 case class Substitution private (toMap: IMap[Name, Term]) extends FirstOrder[Substitution] {
   require(toMap.toList.all(m => Var(m._1) != m._2), "identity substitutions should be pre-filtered")
 
-  override protected def getFreeVars = ISet.unions(toMap.values.map(_.freeVars))
+  override lazy val freeVars = ISet.unions(toMap.values.map(_.freeVars))
 
   def boundVars = toMap.keySet
 
@@ -40,6 +40,8 @@ case class Substitution private (toMap: IMap[Name, Term]) extends FirstOrder[Sub
   def +(elem: (Name, Term)): Option[Substitution] = {
     val (name, term) = elem
     toMap.lookup(name) match {
+      case _ if Var(name) == term =>
+        Some(this)
       case None =>
         Some(new Substitution(toMap + (name -> this.apply(term))))
       case Some(existingMatch) if existingMatch =@= term =>

@@ -10,7 +10,7 @@ case class Var(name: Name) extends Term {
   override def driveHead(env: Env) =
     env.matches.lookup(this).fold(this: Term)(_.asTerm)
 
-  protected override def getFreeVars = ISet.singleton(name)
+  override lazy val freeVars = ISet.singleton(name)
 
   def :/(sub: Substitution): Term =
     sub.toMap.lookup(name).getOrElse(this)

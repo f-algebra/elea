@@ -15,7 +15,7 @@ final case class Context private(gap: Name, context: Term) extends TermLike[Cont
     caseOf.copy(branches = newBranches)
   }
 
-  override protected def getFreeVars: ISet[Name] = context.freeVars.delete(gap)
+  override lazy val freeVars: ISet[Name] = context.freeVars.delete(gap)
 
   /**
     * Attempts to remove this context from the given term, returning what would be in the gap.

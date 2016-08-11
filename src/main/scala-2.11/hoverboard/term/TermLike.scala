@@ -11,14 +11,10 @@ import Scalaz._
   * e.g. [[hoverboard.term.Branch]]
   */
 abstract class TermLike[This <: TermLike[This]] {
-  lazy val freeVars: ISet[Name] = getFreeVars
-
-  protected def getFreeVars: ISet[Name] =
+  lazy val freeVars: ISet[Name] =
     ISet.unions(immediateSubtermsWithBindings.map { case (bs, t) => t.freeVars.difference(bs) }.toList)
 
-  lazy val indices: ISet[Fix.Index] = getIndices
-
-  protected def getIndices: ISet[Fix.Index] =
+  lazy val indices: ISet[Fix.Index] =
     ISet.unions(immediateSubterms.map(_.indices).toList)
 
   /**
@@ -35,7 +31,7 @@ abstract class TermLike[This <: TermLike[This]] {
     * All of the sub-terms directly contained in `This`.
     * Also gives the bindings which have been captured for these sub-terms within `This`.
     */
-  final def immediateSubtermsWithBindings: IList[(ISet[Name], Term)] = {
+  lazy val immediateSubtermsWithBindings: IList[(ISet[Name], Term)] = {
     // I'm going to functional programmer hell for this implementation
     var visited = IList.empty[(ISet[Name], Term)]
     mapImmediateSubtermsWithBindings { (names, term) =>
@@ -45,11 +41,13 @@ abstract class TermLike[This <: TermLike[This]] {
     visited.reverse
   }
 
-  final def immediateSubterms: IList[Term] = immediateSubtermsWithBindings.map(_._2)
+  lazy val immediateSubterms: IList[Term] = immediateSubtermsWithBindings.map(_._2)
 
-  final def subterms: IList[Term] = immediateSubterms.flatMap(t => t +: t.subterms)
+  lazy val subterms: IList[Term] = immediateSubterms.flatMap(t => t +: t.subterms)
 
-  final def subtermsWithBindings: IList[(ISet[Name], Term)] = {
+  lazy val subtermSet: ISet[Term] = ISet.fromFoldable(subterms)
+
+  lazy val subtermsWithBindings: IList[(ISet[Name], Term)] = {
     var visited = IList.empty[(ISet[Name], Term)]
     mapSubtermsWithBindings { (bindings, term) =>
       visited = (bindings, term) :: visited

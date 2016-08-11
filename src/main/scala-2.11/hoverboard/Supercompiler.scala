@@ -2,40 +2,17 @@ package hoverboard
 
 import hoverboard.term._
 
+import scala.annotation.tailrec
 import scalaz.Scalaz._
 import scalaz._
 
-object Supercompiler {
+/**
+  * `supercompile` -> `ripple` -> `critique` -> `supercompiler`,
+  * where -> means _calls_
+  */
+class Supercompiler {
 
-  case class Fold(criticalPair: CriticalPair, from: Term, to: Term)
-
-  case class Env(rewriteEnv: rewrite.Env,
-                 folds: IList[Fold]) {
-
-    def alreadySeen(term: Term): Boolean =
-      rewriteEnv.alreadySeen(term)
-
-    def havingSeen(term: Term): Env =
-      copy(rewriteEnv = rewriteEnv.havingSeen(term))
-
-    def withMatch(term: Term, pattern: Pattern): Env =
-      copy(rewriteEnv = rewriteEnv.withMatch(term, pattern))
-
-    def withBindings(bindings: ISet[Name]): Env =
-      copy(rewriteEnv = rewriteEnv.withBindings(bindings))
-
-    def withFold(fold: Fold): Env =
-      copy(folds = folds :+ fold)
-
-    def bindingsSet: ISet[Name] = rewriteEnv.bindingsSet
-  }
-
-  object Env {
-    def empty: Env =
-      Env(rewrite.Env.empty, IList.empty)
-  }
-
-  class SubstitutionsNonUnifiableError(detailMsg: String) extends AssertionError(detailMsg)
+  import Supercompiler._
 
   final def couplesWith(skeleton: Term, goal: Term): Boolean =
     (skeleton, goal) match {
@@ -87,28 +64,38 @@ object Supercompiler {
     }
   }
 
-  // TODO could fail when critique fails, if this is a hotspot
-  final def critique(env: Env)(skeletons: ISet[Term], goal: Term): (Term, Substitution) = {
-    lazy val failure = (goal, Substitution.empty)
-    if (env.alreadySeen(goal))
-      failure
-    else {
-      supercompile(goal) match {
-        case AppView(goalFun: Fix, goalArgs) =>
-          goalFun.fissionConstructorContext match {
-            case Some(fissionedFun) =>
-              failure
-            // critique(env.havingSeen(goal), skeletons, )
-            case None =>
+  // TODO potential optimisation: entire process could fail when critique fails
+  def critique(env: Env)(skeletons: ISet[Term], goal: Term): (Term, Substitution) = {
+    if (skeletons.isEmpty) {
+      (goal, Substitution.empty)
+    } else {
+      val overlap = ISet.fromFoldable(goal.subterms).intersection(skeletons)
+      if (!overlap.isEmpty) {
+        val matchedSkeletons = overlap.toIList
+        ???
+      } else {
+        lazy val failure = (goal, Substitution.empty)
+        if (env.alreadySeen(goal))
+          failure
+        else {
+          supercompile(goal) match {
+            case AppView(goalFun: Fix, goalArgs) =>
+              goalFun.fissionConstructorContext match {
+                case Some((fissionedCtx, fissionedFix)) =>
+                  val newGoal = fissionedCtx.apply(fissionedFix).apply(goalArgs).drive
+                  critique(env.havingSeen(goal))(skeletons, newGoal)
+                case None =>
+                  failure
+              }
+            case _ =>
               failure
           }
-        case _ =>
-          failure
+        }
       }
     }
   }
 
-  final def ripple(env: Env)(skeleton: Term, goal: Term): (Term, Substitution) =
+  def ripple(env: Env)(skeleton: Term, goal: Term): (Term, Substitution) =
     skeleton unifyLeft goal match {
       case Some(unifier) if skeleton.indices.isSubsetOf(goal.indices) =>
         val genVar = Name.fresh("ξ")
@@ -120,7 +107,7 @@ object Supercompiler {
           dive(env)(skeleton, goal)
     }
 
-  def supercompile(term: Term): Term =
+  final def supercompile(term: Term): Term =
     supercompile(Env.empty, term)
 
   def supercompile(env: Env, term: Term): Term = {
@@ -136,8 +123,8 @@ object Supercompiler {
             val newEnv = env.withFold(Fold(cp, foldFrom, foldTo))
             supercompile(newEnv, foldFrom.replace(cp.term, cp.termUnfolded).drive(env.rewriteEnv))
           case Some(fold) =>
-            // Dunno...
-            ???
+            // We've found a matching critical path, so it's time to ripple
+            fun.apply(args)
         }
       case term: Case =>
         // Descend into the branches of pattern matches
@@ -152,7 +139,7 @@ object Supercompiler {
     * Supercompile the body of a pattern match branch,
     * safely (without variable capture) adding the matched pattern into the environment
     */
-  def supercompileBranch(env: Env, matchedTerm: Term)(branch: Branch): Branch = {
+  final def supercompileBranch(env: Env, matchedTerm: Term)(branch: Branch): Branch = {
     branch match {
       case branch: DefaultBranch =>
         branch.copy(body = supercompile(env, branch.body))
@@ -161,4 +148,39 @@ object Supercompiler {
         branch.copy(body = supercompile(env.withMatch(matchedTerm, branch.pattern), branch.body))
     }
   }
+}
+
+
+object Supercompiler {
+
+  case class Fold(criticalPair: CriticalPair, from: Term, to: Term)
+
+  case class Env(rewriteEnv: rewrite.Env,
+                 folds: IList[Fold]) {
+
+    def alreadySeen(term: Term): Boolean =
+      rewriteEnv.alreadySeen(term)
+
+    def havingSeen(term: Term): Env =
+      copy(rewriteEnv = rewriteEnv.havingSeen(term))
+
+    def withMatch(term: Term, pattern: Pattern): Env =
+      copy(rewriteEnv = rewriteEnv.withMatch(term, pattern))
+
+    def withBindings(bindings: ISet[Name]): Env =
+      copy(rewriteEnv = rewriteEnv.withBindings(bindings))
+
+    def withFold(fold: Fold): Env =
+      copy(folds = folds :+ fold)
+
+    def bindingsSet: ISet[Name] = rewriteEnv.bindingsSet
+  }
+
+  object Env {
+    def empty: Env =
+      Env(rewrite.Env.empty, IList.empty)
+  }
+
+  class SubstitutionsNonUnifiableError(detailMsg: String) extends AssertionError(detailMsg)
+
 }

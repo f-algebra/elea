@@ -5,8 +5,8 @@ import org.scalacheck.Arbitrary
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
 
-import scalaz.Scalaz._
-import scalaz._
+import scalaz.{Name => _, _}
+import Scalaz._
 
 class TermTest extends TestConfig {
 
@@ -152,7 +152,7 @@ class TermTest extends TestConfig {
   }
 
   "fissionConstructorContext" should "fission (Cons y _) out of Reverse fused into Snoc" in {
-    val Some((ctx, newFix)) = t"fix[a] f xs -> case xs | Nil -> Cons y Nil | Cons x xs' -> Append (f xs') (Cons x Nil) end"
+    val Some((ctx, newFix)) = t"ReverseSnoc y"
       .drive
       .asInstanceOf[Fix]
       .fissionConstructorContext
@@ -178,7 +178,7 @@ class TermTest extends TestConfig {
     t"Lt".asInstanceOf[Fix].strictArgIndices shouldEqual IList(0, 1)
   }
 
-  def msgWithSanityCheck(t1: Term, t2: Term): (Term, Substitution, Substitution) = {
+  def checkedMsg(t1: Term, t2: Term): (Term, Substitution, Substitution) = {
     val (ctx, sub1, sub2) = t1 ᴨ t2
     ctx :/ sub1 shouldEqual t1
     ctx :/ sub2 shouldEqual t2
@@ -186,37 +186,36 @@ class TermTest extends TestConfig {
     (ctx, sub1, sub2)
   }
 
-  "most specific generalisation" should "expose substitutions" in {
-    forAll { (ctx: Term, leftSubTerm: Term, rightSubTerm: Term) =>
-      whenever(!leftSubTerm.isInstanceOf[Var]) {
-        whenever(!rightSubTerm.isInstanceOf[Var]) {
-          // A lot of properties turn out not to hold if the two substitution terms are zippable
-          whenever(leftSubTerm.zip(rightSubTerm).isEmpty) {
-            ctx.freeVars.toList.foreach { subVar =>
-              val leftTerm = ctx :/ leftSubTerm / subVar
-              val rightTerm = ctx :/ rightSubTerm / subVar
-              val (msgCtx, leftSub, rightSub) = msgWithSanityCheck(leftTerm, rightTerm)
-              ISet.fromFoldable(leftSub.toMap.values) shouldEqual ISet.singleton(leftSubTerm)
-              ISet.fromFoldable(rightSub.toMap.values) shouldEqual ISet.singleton(rightSubTerm)
-              val uniOpt = msgCtx.unifyLeft(ctx)
-              uniOpt should be ('isDefined)
-              val Some(ctxUni) = uniOpt
-              ISet.fromFoldable(ctxUni.toMap.values) shouldEqual ISet.singleton(Var(subVar))
-              leftSub.toMap.keySet shouldEqual ctxUni.boundVars
-              rightSub.toMap.keySet shouldEqual ctxUni.boundVars
-            }
-          }
-        }
-      }
-    }
-  }
-
-  it should "do nothing for equal terms" in {
+  "most specific generalisation" should "do nothing for equal terms" in {
     forAll { (t: Term) =>
-      val (ctx, sub1, sub2) = msgWithSanityCheck(t.freshen, t)
+      val (ctx, sub1, sub2) = checkedMsg(t.freshen, t)
       sub1.isEmpty shouldBe true
       sub2.isEmpty shouldBe true
       ctx shouldEqual t
+    }
+  }
+
+  "generalisation" should "reverse substitution" in {
+    def check(t1: Term, t2: Term): Unit = {
+      t1.freeVars.toList.foreach { (x: Name) =>
+        val (genTerm, genVars) = (t1 :/ t2 / x).generalise(IList(t2))
+        genVars.length shouldBe 1
+        val genVar = genVars.headOption.get
+        genTerm :/ Var(x) / genVar shouldEqual t1
+      }
+    }
+
+    val historicalFailures = Seq(
+      (t"case x | 0 -> y end", t"p z"),
+      (t"f n1", t"Lt n1 n2")
+    )
+
+    historicalFailures.foreach((check _).tupled)
+
+    forAll { (t1: Term, t2: Term) =>
+      whenever(!t1.subtermSet.contains(t2)) {
+        check(t1, t2)
+      }
     }
   }
 }

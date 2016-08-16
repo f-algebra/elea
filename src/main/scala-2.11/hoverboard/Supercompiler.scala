@@ -119,19 +119,20 @@ class Supercompiler {
     supercompile(Env.empty, term)
 
   def supercompile(env: Env, term: Term): Term = {
-    term match {
-      case AppView(fun: Fix, args: IList[Term]) if !fun.isFPPF(args) =>
+    term.drive match {
+      case AppView(fun: Fix, args) if !fun.isFPPF(args) =>
         val cp = CriticalPair.of(fun, args)
-        env.folds.find(cp embedsInto _.criticalPair) match {
+        env.folds.find(_.criticalPair embedsInto cp) match {
           case None =>
             // No existing fold has a matching critical path, so we should continue unrolling
-            val fold = Fold.fromCriticalPair(cp)
+            val fold = Fold(cp, fun.apply(args))
             val newEnv = env.withFold(fold)
-            val supercompiledTerm = supercompile(newEnv, fold.from.replace(cp.term, cp.termUnfolded).drive(env.rewriteEnv))
+            val unfoldedTerm = fold.from.replace(cp.term, cp.termUnfolded).drive(env.rewriteEnv)
+            val supercompiledTerm = supercompile(newEnv, unfoldedTerm)
             if (!supercompiledTerm.freeVars.contains(fold.foldVar))
               supercompiledTerm
             else {
-              val fixBody = Lam(fold.args, supercompiledTerm)
+              val fixBody = Lam(fold.foldVar :: fold.args, supercompiledTerm)
               Fix(fixBody, fun.index)
                 .apply(fold.args.map(Var(_): Term))
                 .drive
@@ -141,11 +142,14 @@ class Supercompiler {
             val (rippledTerm, rippleSub) = ripple(env, fold)(fold.from, term)
             rippledTerm :/ rippleSub
         }
+        // Constructor or variable function
+      case AppView(fun, args) if args.nonEmpty =>
+        App(fun, args.map(supercompile(env, _)))
       case term: Case =>
         // Descend into the branches of pattern matches
         val newBranches = term.branches.map(supercompileBranch(env, term.matchedTerm))
         term.copy(branches = newBranches)
-      case _ =>
+      case term =>
         term
     }
   }
@@ -171,8 +175,7 @@ object Supercompiler {
   case class Fold private(criticalPair: CriticalPair, from: Term, to: Term, foldVar: Name, args: IList[Name])
 
   object Fold {
-    def fromCriticalPair(criticalPair: CriticalPair): Fold = {
-      val from = criticalPair.fix.apply(criticalPair.args)
+    def apply(criticalPair: CriticalPair, from: Term): Fold = {
       val foldVar = Name.fresh("μ")
       val args = from.freeVars.toIList
       val to = Var(foldVar).apply(args.map(Var(_): Term))

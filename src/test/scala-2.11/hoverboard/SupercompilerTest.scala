@@ -31,8 +31,8 @@ class SupercompilerTest extends TestConfig {
       val (drivenGoal, drivenSkel) = (goal.drive, skeleton.drive)
       val AppView(skelFix: Fix, skelArgs) = drivenSkel
       val fakeCp = CriticalPair(IList.empty, skelFix, skelArgs)
-      val fold = Fold.fromCriticalPair(fakeCp)
-      val (term, sub) = ripple(Env.empty, fold)(drivenSkel, drivenGoal)
+      val fold = Fold(fakeCp, drivenSkel)
+      val (term, sub) = ripple(Env.empty, fold)(fold.from, drivenGoal)
       (fold, term :/ sub)
     }
 
@@ -45,12 +45,24 @@ class SupercompilerTest extends TestConfig {
     }
   }
 
-  "rippling" should "work for simple examples" in {
-    val supercompiler = new TestSupercompiler
+  val supercompiler = new TestSupercompiler
 
-    val (addFold, addTerm) = supercompiler.testRipple(t"Add (Add x y) z", t"Suc (Add (Add x2 y) z)")
-    addTerm shouldEqual t"Suc (${Var(addFold.foldVar)} x2 y z)"
-   // supercompiler.assertSuccessfulRipple(t"Reverse (Append xs ys)", t"Append (Reverse (Append xs2 ys)) (Cons x Nil)")
+  "rippling" should "work for simple examples" in {
+    import supercompiler.testRipple
+
+    val (addFold, addTerm) = testRipple(t"Add (Add x y) z", t"Suc (Add (Add x2 y) z)")
+    addTerm shouldEqual t"Suc (${addFold.foldVar} x2 y z)"
+
+    val (revFold, revTerm) = testRipple(t"Reverse (Append xs ys)", t"Append (Reverse (Append xs2 ys)) (Cons x Nil)")
+    revTerm shouldEqual t"Append (${revFold.foldVar} xs2 ys) (Cons x Nil)".drive
+  }
+
+  "supercompilation" should "work for simple examples" in {
+    import supercompiler.supercompile
+
+    supercompile(t"Add x y") shouldEqual t"Add x y".drive
+    supercompile(t"Add (Add x y) z") shouldEqual t"Add x (Add y z)".drive
+    supercompile(t"Reverse (Append xs (Cons y Nil))") shouldEqual t"ReverseSnoc y xs".drive
   }
 
 //  "critiquing" should "be able to fission out constructor contexts" in {

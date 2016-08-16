@@ -59,7 +59,7 @@ abstract class Term extends TermLike[Term] {
     result
   }
 
-  final def drive: Term = drive(Env.empty)
+  final lazy val drive: Term = drive(Env.empty)
 
   def /(from: Name): Substitution =
     Substitution(from -> this)
@@ -147,7 +147,7 @@ abstract class Term extends TermLike[Term] {
   /**
     * Replace occurrences (modulo alpha-equality) of `from` with `to` in this term and all its sub-terms
     */
-  final def replace(from: Term, to: Term): Term =
+  def replace(from: Term, to: Term): Term =
     if (this =@= from)
       to
     else {

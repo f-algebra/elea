@@ -157,7 +157,8 @@ class TermTest extends TestConfig {
       .asInstanceOf[Fix]
       .fissionConstructorContext
     ctx shouldEqual C(x => t"fn f xs -> Cons y (f xs)".betaReduce(NonEmptyList(Var(x))))
-    newFix shouldEqual t"fix[a] f xs -> case xs | Nil -> Nil | Cons x xs' -> Append (f xs') (Cons x Nil) end".drive
+    val otherFix = t"fix[a] rev xs -> case xs | Nil -> Nil | Cons x xs' -> Snoc x (rev xs') end".drive
+    otherFix shouldEqual (newFix: Term)
   }
 
   "homeomorphic embedding" should "work properly" in {
@@ -195,6 +196,16 @@ class TermTest extends TestConfig {
     }
   }
 
+  "replace" should "reverse substitution" in {
+    forAll { (t1: Term, t2: Term) =>
+      whenever(!t1.subtermSet.contains(t2)) {
+        t1.freeVars.toList.foreach { (x: Name) =>
+          (t1 :/ t2 / x).replace(t2, Var(x)) shouldEqual t1
+        }
+      }
+    }
+  }
+
   "generalisation" should "reverse substitution" in {
     def check(t1: Term, t2: Term): Unit = {
       t1.freeVars.toList.foreach { (x: Name) =>
@@ -217,5 +228,12 @@ class TermTest extends TestConfig {
         check(t1, t2)
       }
     }
+  }
+
+  "AppPrefix" should "work" in {
+    val AppPrefix(t1, t2, xs) = (t"f x y z", t"g a")
+    t1 shouldEqual t"f x"
+    t2 shouldEqual t"g a"
+    xs shouldEqual NonEmptyList(t"y", t"z")
   }
 }

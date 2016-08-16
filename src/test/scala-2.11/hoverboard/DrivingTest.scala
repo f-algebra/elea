@@ -33,6 +33,8 @@ class DrivingTest extends TestConfig {
   it should "remove constant fixed-point arguments" in {
     t"Add".drive shouldEqual t"fn x y -> (fix f x -> case x | 0 -> y | Suc x' -> Suc (f x') end) x"
     t"Append xs (Cons y Nil)".drive shouldEqual t"Snoc y xs".drive
+    t"fix[a] f xs -> case xs | Nil -> Nil | Cons x xs' -> Append (f xs') (Cons x Nil) end".drive shouldEqual
+      t"fix[a] f xs -> case xs | Nil -> Nil | Cons x xs' -> Snoc x (f xs') end".drive
   }
 
   it should "not introduce free variables" in {

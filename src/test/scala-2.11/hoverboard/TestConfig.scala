@@ -8,7 +8,7 @@ trait TestConfig extends FlatSpec with Matchers with PropertyChecks {
   override implicit val generatorDrivenConfig =
     PropertyCheckConfig(
       // TODO remove this low minSuccessful value when at v1.0 and I can be bothered to wait for all the test cases to finish!
-      minSuccessful = 8,
+      minSuccessful = 16,
       workers = 8,
       maxDiscarded = 2000)
 

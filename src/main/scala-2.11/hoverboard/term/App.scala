@@ -71,6 +71,27 @@ case class App private(fun: Term, args: NonEmptyList[Term]) extends Term with Fi
       case fun: Fix => fun.isFPPF(args.list)
       case _ => false
     }
+
+  override def unifyLeft(to: Term): Option[Substitution] =
+    (to, fun) match {
+      case (to: App, fun: Var) if to.args.size > args.size =>
+        val toArgsRight = to.args.list.takeRight(args.size)
+        val funMatch = App(to.fun, to.args.list.dropRight(args.size))
+        for {
+          argsSub <- Substitution.merge(args.list.fzipWith(toArgsRight)(_ unifyLeft _))
+          mergedSub <- Substitution(fun.name -> funMatch) ++ argsSub
+        } yield mergedSub
+      case _ =>
+        super.unifyLeft(to)
+    }
+
+  override def replace(from: Term, to: Term): Term =
+    (this, from) match {
+      case AppPrefix(left, from, excessArgs) if (left =@= from) =>
+        App(to, excessArgs.map(_.replace(from, to)))
+      case _ =>
+        super.replace(from, to)
+    }
 }
 
 object App {
@@ -93,5 +114,16 @@ object AppView {
     term match {
       case term: App => Some((term.fun, term.args.list))
       case _ => Some((term, IList.empty[Term]))
+    }
+}
+
+object AppPrefix {
+  def unapply(terms: (Term, Term)): Option[(App, App, NonEmptyList[Term])] =
+    (terms._1, terms._2) match {
+      case (longTerm: App, shortTerm: App) if longTerm.args.size > shortTerm.args.size =>
+        val longArgs = longTerm.args.list
+        val excessArgs = longArgs.takeRight(longArgs.length - shortTerm.args.size).toNel.get
+        Some((App(longTerm.fun, longArgs.dropRight(excessArgs.size).toNel.get), shortTerm, excessArgs))
+      case _ => None
     }
 }

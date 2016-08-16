@@ -112,7 +112,9 @@ case class PatternBranch(pattern: Pattern, body: Term) extends Branch {
 
   def unifyLeft(to: Branch): Option[Substitution] =
     to match {
-      case to: PatternBranch =>
+      case to: PatternBranch
+          if pattern.constructor == to.pattern.constructor &&
+            pattern.bindings.length == to.pattern.bindings.length  =>
         val bindingSub = Substitution.zip(to.pattern.bindings, pattern.bindings.map(Var))
         body.unifyLeft(to.body :/ bindingSub)
       case _ => None

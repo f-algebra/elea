@@ -26,8 +26,8 @@ class Supercompiler {
         false
     }
 
-  final def dive(env: Env)(skeleton: Term, goal: Term): (Term, Substitution) = {
-    val (rippledGoalSubterms, rippleSubs) = goal.immediateSubterms.map(ripple(env)(skeleton, _)).unzip
+  final def dive(env: Env, fold: Fold)(skeleton: Term, goal: Term): (Term, Substitution) = {
+    val (rippledGoalSubterms, rippleSubs) = goal.immediateSubterms.map(ripple(env, fold)(skeleton, _)).unzip
     Substitution.union(rippleSubs) match {
       case None =>
         throw new SubstitutionsNonUnifiableError(s"$skeleton dive $goal")
@@ -45,10 +45,10 @@ class Supercompiler {
         (mergedCtxSub, mergedGenSub)
     }
 
-  final def couple(env: Env)(skeleton: Term, goal: Term): (Term, Substitution) = {
+  final def couple(env: Env, fold: Fold)(skeleton: Term, goal: Term): (Term, Substitution) = {
     val (ctx, skelSub, goalSub) = skeleton ᴨ goal
     val rippled: IMap[Name, (Term, Substitution)] =
-      skelSub.toMap.intersectionWith(goalSub.toMap)(ripple(env))
+      skelSub.toMap.intersectionWith(goalSub.toMap)(ripple(env, fold))
     val (mergedCtxSub, mergedGenSub) = mergeRipples(rippled)
     // Simplifying assumption because I'm too hungover to figure out the general case
     mergedCtxSub.boundVars.toList match {
@@ -78,7 +78,7 @@ class Supercompiler {
         if (env.alreadySeen(goal))
           failure
         else {
-          supercompile(goal) match {
+          /*supercompile(goal)*/ goal match {
             case AppView(goalFun: Fix, goalArgs) =>
               goalFun.fissionConstructorContext match {
                 case Some((fissionedCtx, fissionedFix)) =>
@@ -95,16 +95,24 @@ class Supercompiler {
     }
   }
 
-  def ripple(env: Env)(skeleton: Term, goal: Term): (Term, Substitution) =
-    skeleton unifyLeft goal match {
-      case Some(unifier) if skeleton.indices.isSubsetOf(goal.indices) =>
-        val genVar = Name.fresh("ξ")
-        (Var(genVar), goal / genVar)
-      case _ =>
-        if (couplesWith(skeleton, goal))
-          couple(env)(skeleton, goal)
-        else
-          dive(env)(skeleton, goal)
+  def ripple(env: Env, fold: Fold)(skeleton: Term, goal: Term): (Term, Substitution) =
+    if (!couplesWith(skeleton, goal))
+      dive(env, fold)(skeleton, goal)
+    else {
+      val (coupledGoal, coupledSub) = couple(env, fold)(skeleton, goal)
+      val rippledGoal = coupledGoal :/ coupledSub
+      skeleton unifyLeft rippledGoal match {
+        case Some(rippleUni) =>
+          fold.from.unifyLeft(skeleton) match {
+            case None =>
+              val genVar = Name.fresh("ξ")
+              (Var(genVar), rippledGoal / genVar)
+            case Some(foldUni) =>
+              ((fold.to :/ foldUni) :/ rippleUni, Substitution.empty)
+          }
+        case _ =>
+          (coupledGoal, coupledSub)
+      }
     }
 
   final def supercompile(term: Term): Term =
@@ -117,14 +125,21 @@ class Supercompiler {
         env.folds.find(cp embedsInto _.criticalPair) match {
           case None =>
             // No existing fold has a matching critical path, so we should continue unrolling
-            val foldVar = Name.fresh("μ")
-            val foldFrom = fun.apply(args)
-            val foldTo = Var(foldVar).apply(foldFrom.freeVars.toIList.map(Var(_): Term))
-            val newEnv = env.withFold(Fold(cp, foldFrom, foldTo))
-            supercompile(newEnv, foldFrom.replace(cp.term, cp.termUnfolded).drive(env.rewriteEnv))
+            val fold = Fold.fromCriticalPair(cp)
+            val newEnv = env.withFold(fold)
+            val supercompiledTerm = supercompile(newEnv, fold.from.replace(cp.term, cp.termUnfolded).drive(env.rewriteEnv))
+            if (!supercompiledTerm.freeVars.contains(fold.foldVar))
+              supercompiledTerm
+            else {
+              val fixBody = Lam(fold.args, supercompiledTerm)
+              Fix(fixBody, fun.index)
+                .apply(fold.args.map(Var(_): Term))
+                .drive
+            }
           case Some(fold) =>
             // We've found a matching critical path, so it's time to ripple
-            fun.apply(args)
+            val (rippledTerm, rippleSub) = ripple(env, fold)(fold.from, term)
+            rippledTerm :/ rippleSub
         }
       case term: Case =>
         // Descend into the branches of pattern matches
@@ -153,7 +168,17 @@ class Supercompiler {
 
 object Supercompiler {
 
-  case class Fold(criticalPair: CriticalPair, from: Term, to: Term)
+  case class Fold private(criticalPair: CriticalPair, from: Term, to: Term, foldVar: Name, args: IList[Name])
+
+  object Fold {
+    def fromCriticalPair(criticalPair: CriticalPair): Fold = {
+      val from = criticalPair.fix.apply(criticalPair.args)
+      val foldVar = Name.fresh("μ")
+      val args = from.freeVars.toIList
+      val to = Var(foldVar).apply(args.map(Var(_): Term))
+      Fold(criticalPair, from, to, foldVar, args)
+    }
+  }
 
   case class Env(rewriteEnv: rewrite.Env,
                  folds: IList[Fold]) {

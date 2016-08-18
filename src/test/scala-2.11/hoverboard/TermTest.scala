@@ -1,9 +1,7 @@
 package hoverboard
 
 import hoverboard.term._
-import org.scalacheck.Arbitrary
-import org.scalatest.prop.PropertyChecks
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalacheck._
 
 import scalaz.{Name => _, _}
 import Scalaz._
@@ -206,28 +204,16 @@ class TermTest extends TestConfig {
     }
   }
 
-  "generalisation" should "reverse substitution" in {
-    def check(t1: Term, t2: Term): Unit = {
-      t1.freeVars.toList.foreach { (x: Name) =>
-        val (genTerm, genVars) = (t1 :/ t2 / x).generalise(IList(t2))
-        genVars.length shouldBe 1
-        val genVar = genVars.headOption.get
-        genTerm :/ Var(x) / genVar shouldEqual t1
-      }
-    }
-
-    val historicalFailures = Seq(
-      (t"case x | 0 -> y end", t"p z"),
-      (t"f n1", t"Lt n1 n2")
-    )
-
-    historicalFailures.foreach((check _).tupled)
-
-    forAll { (t1: Term, t2: Term) =>
-      whenever(!t1.subtermSet.contains(t2)) {
-        check(t1, t2)
-      }
-    }
+  "generalisation" should "work for a simple example" in {
+    val term = t"case x | Suc y -> f (g y) (Suc z) a end"
+    val (genTerm, genVars) = term.generalise(IList(t"g y", t"Suc z", t"a"))
+    genVars.length shouldBe 3
+    val Seq(x1, x2, x3) = genVars.toList
+    val uni = genTerm unifyLeft term
+    uni should be ('isDefined)
+    val uniMap = uni.get.toMap
+    uniMap.keySet shouldEqual ISet.fromList(List(x2, x3))
+    genTerm :/ Substitution(x1 -> t"g y", x2 -> t"Suc z", x3 -> t"a") shouldEqual term
   }
 
   "AppPrefix" should "work" in {

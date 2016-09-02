@@ -145,6 +145,8 @@ class Supercompiler {
         // Constructor or variable function
       case AppView(fun, args) if args.nonEmpty =>
         App(fun, args.map(supercompile(env, _)))
+      case term: Leq =>
+        Leq(supercompile(env, term.smallerTerm), supercompile(env.invertDirection, term.largerTerm))
       case term: Case =>
         // Descend into the branches of pattern matches
         val newBranches = term.branches.map(supercompileBranch(env, term.matchedTerm))
@@ -200,6 +202,9 @@ object Supercompiler {
 
     def withFold(fold: Fold): Env =
       copy(folds = folds :+ fold)
+
+    def invertDirection: Env =
+      copy(rewriteEnv = rewriteEnv.invertDirection)
 
     def bindingsSet: ISet[Name] = rewriteEnv.bindingsSet
   }

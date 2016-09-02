@@ -18,8 +18,9 @@ case class Leq(smallerTerm: Term, largerTerm: Term)
       Truth
     else if (largerTerm == Falsity)
       Truth
-    else
-      this
+    else smallerTerm match {
+      case _ => this
+    }
 
   override def driveSubterms(env: Env): Term = {
     Leq(smallerTerm.drive(env), largerTerm.drive(env.invertDirection))

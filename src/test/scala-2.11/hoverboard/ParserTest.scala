@@ -8,7 +8,7 @@ import org.scalatest.prop.PropertyChecks
 class ParserTest extends FlatSpec with Matchers with PropertyChecks with TestConfig {
 
   "term parsing" should "work" in {
-    t"(fn x x -> f x) y z" shouldBe Lam("x", Lam("x", Var("f")(Var("x"))))(Var("y"), Var("z"))
+    term"(fn x x -> f x) y z" shouldBe Lam("x", Lam("x", Var("f")(Var("x"))))(Var("y"), Var("z"))
   }
 
   it should "have toString as a left identity" in {

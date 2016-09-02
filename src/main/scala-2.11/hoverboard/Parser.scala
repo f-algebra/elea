@@ -33,7 +33,7 @@ object Parser {
     }
     import White._
 
-    val keywords = Set("fix", "fn", "case", "of", "else", "let", "end", "unfold", "rel")
+    val keywords = Set("fix", "fn", "case", "of", "else", "let", "end", "unfold", "dle")
 
     val lowercase = P(CharIn('a' to 'z') | CharIn(Seq('_', 'α')))
     val uppercase = P(CharIn('A' to 'Z') | CharIn('0' to '9') | CharIn(Seq('\'')))
@@ -43,31 +43,31 @@ object Parser {
     val varName: P[Name] = P(P(lowercase ~~ (uppercase | lowercase).repX).! ~ freshener.?)
       .filter(n => !keywords.contains(n._1) || n._2.isDefined)
       .map(n => Name(n._1, n._2))
-    val definitionName: P[String] = P((uppercase ~~ (uppercase | lowercase).repX).!)
+    val definitionName: P[String] = P((uppercase | lowercase).repX(1).!)
 
-    val definedTerm: P[Term] = P(definitionName).map(n => program.definitionOf(n))
+    val definedTerm: P[Term] = P("{" ~~ definitionName ~~ "}" ~/).map(n => program.definitionOf(n))
     val fixIndex: P[Name] = P("[" ~ varName ~ "]")
     val caseIndex: P[Case.Index] = P(("[" ~ varName ~ "]").?).map(_.map(Case.Index).getOrElse(Case.freshIndex))
 
     val termVar: P[Term] = P(varName).map(Var)
-    val simpleTerm: P[Term] = P(bot | unfold | termVar | definedTerm | "(" ~/ term ~ ")")
+    val simpleTerm: P[Term] = P(bot | unfold | termVar | definedTerm | "(" ~ term ~ ")")
     val unfold: P[Term] = P("unfold" ~/ definedTerm).map(_.unfold)
-    val fix: P[Fix] = P("fix" ~/ fixIndex.? ~ varName.rep(1) ~ "->" ~ term)
+    val fix: P[Fix] = P("fix" ~/ fixIndex.? ~ varName.rep(1) ~ "->" ~/ term)
       .map(m => Fix(Lam(IList(m._2 : _*).toNel.get, m._3), m._1.map(Fix.Finite).getOrElse(Fix.freshIndex)))
-    val lam: P[Term] = P("fn" ~/ varName.rep(1) ~ "->" ~ term).map(m => Lam(IList(m._1 : _*), m._2))
+    val lam: P[Term] = P("fn" ~/ varName.rep(1) ~ "->" ~/ term).map(m => Lam(IList(m._1 : _*), m._2))
     val app: P[Term] = P(simpleTerm ~/ simpleTerm.rep).map(m => m._1(m._2 : _*))
     val bot: P[Term] = P("_|_" | "⊥").map(_ => Bot)
-    val leq: P[Leq] = P("rel" ~/ term ~ "=<" ~/ term).map(m => Leq(m._1, m._2))
-    val caseOf: P[Case] = P("case" ~/ caseIndex ~ term ~ branch.rep(1) ~ "end").map(m => Case(m._2, IList(m._3 : _*).toNel.get, m._1))
+    val leq: P[Leq] = P("dle" ~/ simpleTerm ~/ term).map(m => Leq(m._1, m._2))
+    val caseOf: P[Case] = P("case" ~/ caseIndex ~ term ~ branch.rep(1) ~ "end" ~/).map(m => Case(m._2, IList(m._3 : _*).toNel.get, m._1))
+    val term: P[Term] = P(leq | fix | lam | app | caseOf | unfold)
 
     val pattern: P[Pattern] = P(definedTerm ~ varName.rep).map(m => Pattern(m._1.asInstanceOf[Constructor], IList(m._2 : _*)))
+
     val branch: P[Branch] = {
-      val defaultBranch: P[Branch] = P("|" ~ "else" ~/ "->" ~ term).map(DefaultBranch)
-      val patternBranch: P[Branch] = P("|" ~ pattern ~/ "->" ~ term).map(m => PatternBranch(m._1, m._2))
+      val defaultBranch: P[Branch] = P("|" ~ "else" ~ "->" ~/ term).map(DefaultBranch)
+      val patternBranch: P[Branch] = P("|" ~ pattern ~ "->" ~/ term).map(m => PatternBranch(m._1, m._2))
       P(defaultBranch | patternBranch)
     }
-
-    val term: P[Term] = P(leq | fix | lam | app | caseOf | unfold)
 
     val constructorDef: P[Constructor] = {
       val typeArg: P[Boolean] = P("*").map(_ => true) | P("_").map(_ => false)
@@ -78,8 +78,8 @@ object Parser {
     }
 
     val statement: P[Option[Statement]] = {
-      val termDef: P[Statement] = P("let" ~/ definitionName ~ "=" ~ term ~ ";").map(m => TermDef(m._1, m._2))
-      val conDefs: P[Statement] = P("data" ~/ constructorDef ~ ";").map(ConstructorDef)
+      val termDef: P[Statement] = P("let" ~/ definitionName ~/ "=" ~/ term ~ ";" ~/).map(m => TermDef(m._1, m._2))
+      val conDefs: P[Statement] = P("data" ~/ constructorDef ~ ";" ~/).map(ConstructorDef)
 
       P(P(termDef | conDefs).map(Some(_)) | P(End).map(_ => None))
     }

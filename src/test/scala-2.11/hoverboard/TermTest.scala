@@ -11,31 +11,31 @@ class TermTest extends TestConfig {
   import Util._
 
   "substitution" should "replace variables" in {
-    t"x" :/ t"f x" / "x" shouldBe t"f x"
+    term"x" :/ term"f x" / "x" shouldBe term"f x"
   }
 
   "constant arguments" should "be detectable" in {
-    t"fix f x y z -> case y | 0 -> z | Suc y' -> Suc (f x y' z) end"
-      .asInstanceOf[Fix].constantArgs shouldEqual IList(0, 2)
-    t"fix x -> x"
+    term"fix f x y z -> case y | {0} -> z | {Suc} y' -> {Suc} (f x y' z) end"
+      .asInstanceOf[Fix].constantArgs shouldEqual IList({0}, 2)
+    term"fix x -> x"
       .asInstanceOf[Fix].constantArgs shouldEqual IList.empty[Int]
   }
 
   they should "be removed by driving" in {
-    t"Add" shouldEqual
-      t"fn x y -> (fix f x -> case x | 0 -> y | Suc x' -> Suc (f x') end) x"
-    t"Append" shouldEqual
-      t"fn xs ys -> (fix f xs -> case xs | Nil -> ys | Cons x xs' -> Cons x (f xs') end) xs"
-    t"fix f x y z -> case y | 0 -> z | Suc y' -> Suc (f x y' z) end".asInstanceOf[Fix].removeConstantArg(0) shouldEqual
-      t"fn x -> fix f y z -> case y | 0 -> z | Suc y' -> Suc (f y' z) end"
-    t"fix f x y z -> case y | 0 -> z | Suc y' -> Suc (f x y' z) end".asInstanceOf[Fix].removeConstantArg(2) shouldEqual
-      t"fn x y z -> (fix f x y -> case y | 0 -> z | Suc y' -> Suc (f x y') end) x y"
+    term"{add}" shouldEqual
+      term"fn x y -> (fix f x -> case x | {0} -> y | {Suc} x' -> {Suc} (f x') end) x"
+    term"{app}" shouldEqual
+      term"fn xs ys -> (fix f xs -> case xs | {Nil} -> ys | {Cons} x xs' -> {Cons} x (f xs') end) xs"
+    term"fix f x y z -> case y | {0} -> z | {Suc} y' -> {Suc} (f x y' z) end".asInstanceOf[Fix].removeConstantArg({0}) shouldEqual
+      term"fn x -> fix f y z -> case y | {0} -> z | {Suc} y' -> {Suc} (f y' z) end"
+    term"fix f x y z -> case y | {0} -> z | {Suc} y' -> {Suc} (f x y' z) end".asInstanceOf[Fix].removeConstantArg(2) shouldEqual
+      term"fn x y z -> (fix f x y -> case y | {0} -> z | {Suc} y' -> {Suc} (f x y') end) x y"
   }
 
   they should "not be detected incorrectly" in {
-    t"fix id x -> case x | 0 -> 0 | Suc x -> Suc (id x) end".asInstanceOf[Fix]
+    term"fix id x -> case x | {0} -> {0} | {Suc} x -> {Suc} (id x) end".asInstanceOf[Fix]
       .constantArgs shouldBe empty
-    t"Lt".asInstanceOf[Fix]
+    term"{lt}".asInstanceOf[Fix]
       .constantArgs shouldBe empty
   }
 
@@ -48,8 +48,8 @@ class TermTest extends TestConfig {
   }
 
   "subterms containing" should "correctly descend into terms" in {
-    t"Suc (add x' y)".subtermsContaining("add") shouldEqual
-      ISet.fromList(List(t"add x' y", t"add"))
+    term"{Suc} (add x' y)".subtermsContaining("add") shouldEqual
+      ISet.fromList(List(term"add x' y", term"add"))
   }
 
   "unifyLeft" should "detect substitution" in {
@@ -97,30 +97,30 @@ class TermTest extends TestConfig {
     }
   }
 
-  "explore" should "correctly list potential return values of (Add x y)" in {
-    val exploredAdd = t"Add x y".exploreSet
-    exploredAdd should contain (t"y")
-    exploredAdd should contain (t"Suc y")
-    exploredAdd should not contain t"0"
+  "explore" should "correctly list potential return values of ({add} x y)" in {
+    val exploredAdd = term"{add} x y".exploreSet
+    exploredAdd should contain (term"y")
+    exploredAdd should contain (term"{Suc} y")
+    exploredAdd should not contain term"{0}"
   }
 
   it should "correctly list potential return values of (Reverse (Snoc y xs))" in {
-    val unfused = t"Reverse (Snoc y xs)".exploreSet
-    unfused should contain (t"_|_")
-    unfused should contain (t"Cons y Nil")
-    unfused should not contain t"Nil"
+    val unfused = term"{rev} ({snoc} y xs)".exploreSet
+    unfused should contain (term"_|_")
+    unfused should contain (term"{Cons} y {Nil}")
+    unfused should not contain term"{Nil}"
   }
 
   it should "correctly list potential return values for Reverse fused into Snoc" in {
-    val fused = t"(fix f xs -> case xs | Nil -> Cons y Nil | Cons x xs' -> Append (f xs') (Cons x Nil) end) xs".exploreSet
-    fused should contain (t"_|_")
-    fused should contain (t"Cons y Nil")
-    fused should not contain t"Nil"
+    val fused = term"(fix f xs -> case xs | {Nil} -> {Cons} y {Nil} | {Cons} x xs' -> {app} (f xs') ({Cons} x {Nil}) end) xs".exploreSet
+    fused should contain (term"_|_")
+    fused should contain (term"{Cons} y {Nil}")
+    fused should not contain term"{Nil}"
   }
 
   "mapBranchesWithBindings" should "descend into case-of branches" in {
     var seen = ISet.empty[(ISet[Name], Term)]
-    t"case x | 0 -> a | Suc x' -> case x' | 0 -> b | Suc x'' -> c end end"
+    term"case x | {0} -> a | {Suc} x' -> case x' | {0} -> b | {Suc} x'' -> c end end"
       .mapBranchesWithBindings { (bindings, term) =>
         seen = seen.insert((bindings, term))
         term
@@ -131,50 +131,50 @@ class TermTest extends TestConfig {
       (ISet.fromList(List(Name("x'"), Name("x''"))), Var("c"))))
   }
 
-  "stripContext" should "strip (Cons y _) from an example" in {
-    C(x => t"Cons y"(Var(x)))
-      .strip(t"case xs | Nil -> Cons y Nil | Cons x xs' -> Cons y (Append (f xs') (Cons x Nil)) end") shouldEqual
-      Some(t"case xs | Nil -> Nil | Cons x xs' -> Append (f xs') (Cons x Nil) end")
+  "stripContext" should "strip ({Cons} y _) from an example" in {
+    C(x => term"{Cons} y"(Var(x)))
+      .strip(term"case xs | {Nil} -> {Cons} y {Nil} | {Cons} x xs' -> {Cons} y ({app} (f xs') ({Cons} x {Nil})) end") shouldEqual
+      Some(term"case xs | {Nil} -> {Nil} | {Cons} x xs' -> {app} (f xs') ({Cons} x {Nil}) end")
   }
 
   it should "fail for invalid examples" in {
-    C(x => t"Cons y"(Var(x)))
-      .strip(t"case xs | Nil -> Cons y Nil | Cons x xs' -> Cons z (Append (f xs') (Cons x Nil)) end") shouldBe empty
-    C(x => t"Cons y"(Var(x)))
-      .strip(t"case xs | Nil -> Cons y Nil | Cons y xs' -> Cons y (Append (f xs') (Cons x Nil)) end") shouldBe empty
+    C(x => term"{Cons} y"(Var(x)))
+      .strip(term"case xs | {Nil} -> {Cons} y {Nil} | {Cons} x xs' -> {Cons} z ({app} (f xs') ({Cons} x {Nil})) end") shouldBe empty
+    C(x => term"{Cons} y"(Var(x)))
+      .strip(term"case xs | {Nil} -> {Cons} y {Nil} | {Cons} y xs' -> {Cons} y ({app} (f xs') ({Cons} x {Nil})) end") shouldBe empty
   }
 
   "guessConstructorContext" should "find the context for Reverse fused into Snoc" in {
-    t"fix f xs -> case xs | Nil -> Cons y Nil | Cons x xs' -> Append (f xs') (Cons x Nil) end"
-      .asInstanceOf[Fix].guessConstructorContext should contain (C(x => t"Cons y"(Var(x))))
+    term"fix f xs -> case xs | {Nil} -> {Cons} y {Nil} | {Cons} x xs' -> {app} (f xs') ({Cons} x {Nil}) end"
+      .asInstanceOf[Fix].guessConstructorContext should contain (C(x => term"{Cons} y"(Var(x))))
   }
 
-  "fissionConstructorContext" should "fission (Cons y _) out of Reverse fused into Snoc" in {
-    val Some((ctx, newFix)) = t"ReverseSnoc y"
+  "fissionConstructorContext" should "fission ({Cons} y _) out of {reverse} fused into {snoc}" in {
+    val Some((ctx, newFix)) = term"{revSnoc} y"
       .drive
       .asInstanceOf[Fix]
       .fissionConstructorContext
-    ctx shouldEqual C(x => t"fn f xs -> Cons y (f xs)".betaReduce(NonEmptyList(Var(x))))
-    val otherFix = t"fix[a] rev xs -> case xs | Nil -> Nil | Cons x xs' -> Snoc x (rev xs') end".drive
+    ctx shouldEqual C(x => term"fn f xs -> {Cons} y (f xs)".betaReduce(NonEmptyList(Var(x))))
+    val otherFix = term"fix[a] rev xs -> case xs | {Nil} -> {Nil} | {Cons} x xs' -> {snoc} x (rev xs') end".drive
     otherFix shouldEqual (newFix: Term)
   }
 
   "homeomorphic embedding" should "work properly" in {
-    t"x" couplingRule t"Lt x (Suc x)" shouldBe false
-    t"Lt x (Suc x)".removeIndices strictlyEmbedsInto t"Lt x (Suc x)".removeIndices shouldBe false
-    t"Lt x (Suc x)".removeIndices couplingRule t"Lt x (Suc x)".removeIndices shouldBe true
+    term"x" couplingRule term"{lt} x ({Suc} x)" shouldBe false
+    term"{lt} x ({Suc} x)".removeIndices strictlyEmbedsInto term"{lt} x ({Suc} x)".removeIndices shouldBe false
+    term"{lt} x ({Suc} x)".removeIndices couplingRule term"{lt} x ({Suc} x)".removeIndices shouldBe true
   }
 
   "fppf" should "be recognisable" in {
-    t"Add x y".drive.asInstanceOf[App].isFPPF shouldBe true
-    t"Add x x".drive.asInstanceOf[App].isFPPF shouldBe false
-    t"Add (Mul x y) z".drive.asInstanceOf[App].isFPPF shouldBe false
-    t"Add x (Mul y z)".drive.asInstanceOf[App].isFPPF shouldBe true
+    term"{add} x y".drive.asInstanceOf[App].isFPPF shouldBe true
+    term"{add} x x".drive.asInstanceOf[App].isFPPF shouldBe false
+    term"{add} ({mul} x y) z".drive.asInstanceOf[App].isFPPF shouldBe false
+    term"{add} x ({mul} y z)".drive.asInstanceOf[App].isFPPF shouldBe true
   }
 
   "strict args" should "be recognisable" in {
-    t"Reverse".asInstanceOf[Fix].strictArgIndices shouldEqual IList(0)
-    t"Lt".asInstanceOf[Fix].strictArgIndices shouldEqual IList(0, 1)
+    term"{rev}".asInstanceOf[Fix].strictArgIndices shouldEqual IList(0)
+    term"{lt}".asInstanceOf[Fix].strictArgIndices shouldEqual IList(0, 1)
   }
 
   def checkedMsg(t1: Term, t2: Term): (Term, Substitution, Substitution) = {
@@ -205,21 +205,21 @@ class TermTest extends TestConfig {
   }
 
   "generalisation" should "work for a simple example" in {
-    val term = t"case x | Suc y -> f (g y) (Suc z) a end"
-    val (genTerm, genVars) = term.generalise(IList(t"g y", t"Suc z", t"a"))
+    val term = term"case x | {Suc} y -> f (g y) ({Suc} z) a end"
+    val (genTerm, genVars) = term.generalise(IList(term"g y", term"{Suc} z", term"a"))
     genVars.length shouldBe 3
     val Seq(x1, x2, x3) = genVars.toList
     val uni = genTerm unifyLeft term
     uni should be ('isDefined)
     val uniMap = uni.get.toMap
     uniMap.keySet shouldEqual ISet.fromList(List(x2, x3))
-    genTerm :/ Substitution(x1 -> t"g y", x2 -> t"Suc z", x3 -> t"a") shouldEqual term
+    genTerm :/ Substitution(x1 -> term"g y", x2 -> term"{Suc} z", x3 -> term"a") shouldEqual term
   }
 
   "AppPrefix" should "work" in {
-    val AppPrefix(t1, t2, xs) = (t"f x y z", t"g a")
-    t1 shouldEqual t"f x"
-    t2 shouldEqual t"g a"
-    xs shouldEqual NonEmptyList(t"y", t"z")
+    val AppPrefix(t1, t2, xs) = (term"f x y z", term"g a")
+    t1 shouldEqual term"f x"
+    t2 shouldEqual term"g a"
+    xs shouldEqual NonEmptyList(term"y", term"z")
   }
 }

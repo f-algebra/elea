@@ -7,34 +7,39 @@ class DrivingTest extends TestConfig {
   import Util._
 
   "driving" should "perform beta reduction" in {
-    t"(fn x -> x) y".drive shouldEqual t"y"
-    t"(fn x x -> f x) y z".drive shouldEqual t"f z"
-    t"(fn x -> Add x z) (Add x y)".drive shouldEqual t"Add (Add x y) z".drive
+    term"(fn x -> x) y".drive shouldEqual term"y"
+    term"(fn x x -> f x) y z".drive shouldEqual term"f z"
+    term"(fn x -> {add} x z) ({add} x y)".drive shouldEqual term"{add} ({add} x y) z".drive
   }
 
   it should "distribute case onto case" in {
-    t"case (case x | Suc x -> x end) | Suc x -> x end".drive shouldEqual
-      t"case x | Suc x2 -> (case x2 | Suc x -> x end) end"
+    term"case (case x | {Suc} x -> x end) | {Suc} x -> x end".drive shouldEqual
+      term"case x | {Suc} x2 -> (case x2 | {Suc} x -> x end) end"
   }
 
   it should "distribute case applied as a function" in {
-    t"(case x | Suc y -> f y end) y".drive shouldEqual t"case x | Suc z -> f z y end"
+    term"(case x | {Suc} y -> f y end) y".drive shouldEqual term"case x | {Suc} z -> f z y end"
   }
 
   it should "distribute case applied as a strict argument" in {
-    t"Add (case x | Suc y -> f x end) y".drive shouldEqual
-      t"case x | Suc z -> Add (f (Suc z)) y end".drive
+    term"{add} (case x | {Suc} y -> f x end) y".drive shouldEqual
+      term"case x | {Suc} z -> {add} (f ({Suc} z)) y end".drive
+  }
+
+  it should "not distribute case applied as a non-strict argument" in {
+    term"{add} y (case x | {Suc} y -> f x end)".drive should not equal
+      term"case x | {Suc} z -> {add} y (f ({Suc} z)) end".drive
   }
 
   it should "reduce case of inj" in {
-    t"case Suc x | 0 -> a | Suc b -> f b end".drive shouldEqual t"f x"
+    term"case {Suc} x | {0} -> a | {Suc} b -> f b end".drive shouldEqual term"f x"
   }
 
   it should "remove constant fixed-point arguments" in {
-    t"Add".drive shouldEqual t"fn x y -> (fix f x -> case x | 0 -> y | Suc x' -> Suc (f x') end) x"
-    t"Append xs (Cons y Nil)".drive shouldEqual t"Snoc y xs".drive
-    t"fix[a] f xs -> case xs | Nil -> Nil | Cons x xs' -> Append (f xs') (Cons x Nil) end".drive shouldEqual
-      t"fix[a] f xs -> case xs | Nil -> Nil | Cons x xs' -> Snoc x (f xs') end".drive
+    term"{add}".drive shouldEqual term"fn x y -> (fix f x -> case x | {0} -> y | {Suc} x' -> {Suc} (f x') end) x"
+    term"{app} xs ({Cons} y {Nil})".drive shouldEqual term"{snoc} y xs".drive
+    term"fix[a] f xs -> case xs | {Nil} -> {Nil} | {Cons} x xs' -> {app} (f xs') ({Cons} x {Nil}) end".drive shouldEqual
+      term"fix[a] f xs -> case xs | {Nil} -> {Nil} | {Cons} x xs' -> {snoc} x (f xs') end".drive
   }
 
   it should "not introduce free variables" in {
@@ -45,8 +50,8 @@ class DrivingTest extends TestConfig {
 
   it should "be idempotent" in {
     val historicalFails = Seq(
-      t"Add 0 y",
-      t"(fn x y -> case x | 0 -> Suc 0 | Suc x' -> Add y (Mul x' y) end) nat_1 (Suc (Suc (f nat_1)))")
+      term"{add} {0} y",
+      term"(fn x y -> case x | {0} -> {1} | {Suc} x' -> {add} y ({mul} x' y) end) nat_1 ({Suc} ({Suc} (f nat_1)))")
     historicalFails
       .foreach { t => t.drive shouldEqual t.drive.drive }
 
@@ -59,19 +64,19 @@ class DrivingTest extends TestConfig {
   }
 
   it should "not simplify undriveable terms" in {
-    t"Lt x y".drive shouldEqual t"Lt x y"
+    term"{lt} x y".drive shouldEqual term"{lt} x y"
   }
 
   it should "unfold fixed points with constructor arguments safely" in {
-    t"Add (Suc x) y".drive shouldEqual t"Suc (Add x y)".drive
-    t"Reverse (Cons x xs)".drive shouldEqual t"Append (Reverse xs) (Cons x Nil)".drive
+    term"{add} ({Suc} x) y".drive shouldEqual term"{Suc} ({add} x y)".drive
+    term"{rev} ({Cons} x xs)".drive shouldEqual term"{app} ({rev} xs) ({Cons} x {Nil})".drive
   }
 
   it should "not unfold fixed points with constructor arguments dangerously" in {
-    t"Lt x (Suc x)".drive shouldEqual t"Lt x (Suc x)"
-    t"LtEq (Suc x) x".drive shouldEqual t"LtEq (Suc x) x"
-    t"IsSorted (Cons x xs)".drive shouldEqual t"IsSorted (Cons x xs)"
-    t"IsSorted (Cons x (Insert n xs))".drive shouldEqual t"IsSorted (Cons x ${t"Insert n xs".drive})"
+    term"{lt} x ({Suc} x)".drive shouldEqual term"{lt} x ({Suc} x)"
+    term"{lt}Eq ({Suc} x) x".drive shouldEqual term"{lt}Eq ({Suc} x) x"
+    term"{isSorted} ({Cons} x xs)".drive shouldEqual term"{isSorted} ({Cons} x xs)"
+    term"{isSorted} ({Cons} x ({ins} n xs))".drive shouldEqual term"{isSorted} ({Cons} x ${term"{ins} n xs".drive})"
   }
 
   it should "not add fixed-point indices" in {
@@ -79,10 +84,10 @@ class DrivingTest extends TestConfig {
   }
 
   it should "rewrite fixed-points called with ⊥ as strict arguments to ⊥" in {
-    t"Lt x ⊥".drive shouldEqual ⊥
-    t"Lt ⊥ x".drive shouldEqual ⊥
-    t"Add x ⊥".drive should not equal ⊥
-    t"Add (Suc ⊥) y".drive shouldEqual t"Suc ⊥"
-    t"IsSorted (Cons x ⊥)".drive shouldEqual ⊥
+    term"{lt} x ⊥".drive shouldEqual ⊥
+    term"{lt} ⊥ x".drive shouldEqual ⊥
+    term"{add} x ⊥".drive should not equal ⊥
+    term"{add} ({Suc} ⊥) y".drive shouldEqual term"{Suc} ⊥"
+    term"{isSorted} ({Cons} x ⊥)".drive shouldEqual ⊥
   }
 }

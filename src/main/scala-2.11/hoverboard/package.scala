@@ -17,7 +17,7 @@ package object hoverboard {
   }
 
   implicit class WrappedStringContext(context: StringContext)(implicit program: Program) {
-    def t(args: Any*): Term = {
+    def term(args: Any*): Term = {
       // Any interpolated terms are replaced by variables for the parsing step, and then substituted
       // for the provided term after parsing.
       var termArgSubst = Substitution.empty

@@ -1,0 +1,2 @@
+
+let prop1 = dle ({add} ({add} x y) z) ({add} x ({add} y z)) ;

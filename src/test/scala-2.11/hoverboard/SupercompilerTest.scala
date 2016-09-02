@@ -50,20 +50,30 @@ class SupercompilerTest extends TestConfig {
   "rippling" should "work for simple examples" in {
     import supercompiler.testRipple
 
-    val (addFold, addTerm) = testRipple(t"Add (Add x y) z", t"Suc (Add (Add x2 y) z)")
-    addTerm shouldEqual t"Suc (${addFold.foldVar} x2 y z)"
+    val (addFold, addTerm) = testRipple(term"{add} ({add} x y) z", term"{Suc} ({add} ({add} x2 y) z)")
+    addTerm shouldEqual term"{Suc} (${addFold.foldVar} x2 y z)"
 
-    val (revFold, revTerm) = testRipple(t"Reverse (Append xs ys)", t"Append (Reverse (Append xs2 ys)) (Cons x Nil)")
-    revTerm shouldEqual t"Append (${revFold.foldVar} xs2 ys) (Cons x Nil)".drive
+    val (revFold, revTerm) = testRipple(term"{rev} ({app} xs ys)", term"{app} ({rev} ({app} xs2 ys)) (Cons x Nil)")
+    revTerm shouldEqual term"{app} (${revFold.foldVar} xs2 ys) (Cons x Nil)".drive
   }
 
   "supercompilation" should "work for simple examples" in {
     import supercompiler.supercompile
 
-    supercompile(t"Add x y") shouldEqual t"Add x y".drive
-    supercompile(t"Add (Add x y) z") shouldEqual t"Add x (Add y z)".drive
-    supercompile(t"Reverse (Append xs (Cons y Nil))") shouldEqual t"ReverseSnoc y xs".drive
+    supercompile(term"{add} x y") shouldEqual term"{add} x y".drive
+    supercompile(term"{add} ({add} x y) z") shouldEqual term"{add} x ({add} y z)".drive
+    supercompile(term"{rev} ({app} xs ({Cons} y {Nil}))") shouldEqual term"{revSnoc} y xs".drive
   }
+
+  Program
+    .prelude
+    .loadURL(getClass.getResource("test.hover")).definitions
+    .filterKeys(_.startsWith("Prop"))
+    .foreach { case (propName, propTerm) =>
+      it should s"prove $propName in test.hover" in {
+        supercompiler.supercompile(propTerm) shouldEqual Truth
+      }
+    }
 
 //  "critiquing" should "be able to fission out constructor contexts" in {
 //    val supercompiler = new Supercompiler with NoSupercompile with NoRipple with TestAssertions

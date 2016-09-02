@@ -13,6 +13,9 @@ case class Fix(body: Term,
                driven: Boolean = false)
   extends Term with FirstOrder[Term] {
 
+  require(name.isEmpty || freeVars.isEmpty,
+    s"""Cannot name a fixed point with free variables. Name "${name.get}", free variables "$freeVars"""")
+
   override def drive(env: Env): Term =
     if (driven)
       this
@@ -78,10 +81,8 @@ case class Fix(body: Term,
       s"fix$index ${bindings.toList.mkString(" ")} -> $innerBody"
     }
 
-  override def withName(name: String) = {
-    require(freeVars.isEmpty, "Cannot name a fixed-point with free variables")
+  override def withName(name: String) =
     copy(name = Some(name))
-  }
 
   def argCount: Int =
     body.flattenLam._1.length - 1  // -1 for the fixed variable

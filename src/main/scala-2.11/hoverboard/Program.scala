@@ -1,5 +1,7 @@
 package hoverboard
 
+import java.net.URL
+
 import hoverboard.term.Term
 
 import scala.io.Source
@@ -15,6 +17,11 @@ class Program(val definitions: Map[String, Term]) {
     require(definitions.contains(name), s"Cannot find definition for $name")
     definitions.get(name).get
   }
+
+  def loadURL(url: URL): Program = {
+    val text = Source.fromURL(url).mkString
+    Parser.parseAll(text)(_.modifyTerm(_.drive))(this)
+  }
 }
 
 object Program {
@@ -23,8 +30,6 @@ object Program {
 
   val empty = Program(Map.empty)
 
-  lazy val prelude: Program = {
-    val preludeText = Source.fromURL(getClass.getResource("prelude.hover")).mkString
-    Parser.parseAll(preludeText)(_.modifyTerm(_.drive))(Program.empty)
-  }
+  lazy val prelude: Program =
+    Program.empty.loadURL(getClass.getResource("prelude.hover"))
 }

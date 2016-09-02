@@ -9,7 +9,7 @@ case object Bot extends Atom {
 
   override def driveHeadCase(env: Env, enclosingCase: Case): Term = this
 
-  override def toString = "_|_"
+  override def toString = "⊥"
 
   def arbitraryOrderingNumber: Int = 1
 }

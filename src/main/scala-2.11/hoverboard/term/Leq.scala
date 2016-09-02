@@ -13,7 +13,13 @@ import Scalaz._
 case class Leq(smallerTerm: Term, largerTerm: Term)
   extends Term with FirstOrder[Term] {
 
-  override def driveHead(env: Env): Term = this
+  override def driveHead(env: Env): Term =
+    if (smallerTerm == Bot)
+      Truth
+    else if (largerTerm == Falsity)
+      Truth
+    else
+      this
 
   override def driveSubterms(env: Env): Term = {
     Leq(smallerTerm.drive(env), largerTerm.drive(env.invertDirection))
@@ -22,7 +28,7 @@ case class Leq(smallerTerm: Term, largerTerm: Term)
   def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Term =
     Leq(f(ISet.empty[Name], smallerTerm), f(ISet.empty[Name], largerTerm))
 
-  override def toString = s"rel $smallerTerm =< $largerTerm"
+  override def toString = s"$smallerTerm =< $largerTerm"
 
   def arbitraryOrderingNumber: Int = 6
 

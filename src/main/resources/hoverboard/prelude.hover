@@ -11,93 +11,93 @@ data Cons _ *;
 data Leaf;
 data Node _ * *;
 
-let 1 = Suc 0 ;
-let 2 = Suc 1 ;
+let 1 = {Suc} {0} ;
+let 2 = {Suc} {1} ;
 
-let And = fn p q -> case p | False -> False | True -> q end ;
+let and = fn p q -> case p | {False} -> {False} | {True} -> q end ;
 
-let Add = fix add x y -> case[add] x | 0 -> y | Suc x' -> Suc (add x' y) end ;
-let Mul = fix mul x y -> case[mul] x | 0 -> 1 | Suc x' -> Add y (mul x' y) end ;
+let add = fix add x y -> case[add] x | {0} -> y   | {Suc} x' -> {Suc} (add x' y) end ;
+let mul = fix mul x y -> case[mul] x | {0} -> {1} | {Suc} x' -> {add} y (mul x' y) end ;
 
-let Lt = fix lt x y ->
+let lt = fix lt x y ->
     case[lt1] x
-    | 0 ->
+    | {0} ->
         case[lt11] y
-        | 0 -> False
-        | Suc y -> True
+        | {0} -> {False}
+        | {Suc} y -> {True}
         end
-    | Suc x ->
+    | {Suc} x ->
         case[lt12] y
-        | 0 -> False
-        | Suc y -> lt x y
+        | {0} -> {False}
+        | {Suc} y -> lt x y
         end
     end ;
 
-let LtEq = fix lteq x y ->
+let lteq = fix lteq x y ->
     case x
-    | 0 -> True
-    | Suc x ->
+    | {0} -> {True}
+    | {Suc} x ->
         case y
-        | 0 -> False
-        | Suc y -> lteq x y
+        | {0} -> {False}
+        | {Suc} y -> lteq x y
         end
     end ;
 
-let Append = fix app xs ys ->
+let app = fix app xs ys ->
     case[app] xs
-    | Nil -> ys
-    | Cons x xs' -> Cons x (app xs' ys)
+    | {Nil} -> ys
+    | {Cons} x xs' -> {Cons} x (app xs' ys)
     end ;
 
-let Snoc = fn y -> fix snoc xs ->
+let snoc = fn y -> fix snoc xs ->
     case[snoc] xs
-    | Nil -> Cons y Nil
-    | Cons x xs' -> Cons x (snoc xs')
+    | {Nil} -> {Cons} y {Nil}
+    | {Cons} x xs' -> {Cons} x (snoc xs')
     end ;
 
-let Reverse = fix rev xs ->
+let rev = fix rev xs ->
     case[rev] xs
-    | Nil -> Nil
-    | Cons x xs' -> Append (rev xs') (Cons x Nil)
+    | {Nil} -> {Nil}
+    | {Cons} x xs' -> {app} (rev xs') ({Cons} x {Nil})
     end ;
 
-let ReverseSnoc = fn y -> fix rev xs ->
+let revSnoc = fn y -> fix revSnoc xs ->
     case[revsnoc] xs
-    | Nil -> Cons y Nil
-    | Cons x xs' -> Append (rev xs') (Cons x Nil)
+    | {Nil} -> {Cons} y {Nil}
+    | {Cons} x xs' -> {app} (revSnoc xs') ({Cons} x {Nil})
     end ;
 
-let Ones = fix ones -> Cons 1 ones ;
+let ones = fix ones -> {Cons} {1} ones ;
 
-let IsSorted = fix srtd xs ->
+let isSorted = fix isSorted xs ->
     case[sorted1] xs
-    | Nil -> True
-    | Cons x xs' ->
+    | {Nil} -> {True}
+    | {Cons} x xs' ->
       case[sorted2] xs'
-      | Nil -> True
-      | Cons y ys -> And (LtEq x y) (srtd xs')
+      | {Nil} -> {True}
+      | {Cons} y ys -> {and} ({lteq} x y) (isSorted xs')
       end
     end ;
 
-let Insert = fix ins n xs ->
+let ins = fix ins n xs ->
     case[ins1] xs
-    | Nil -> Cons n Nil
-    | Cons x xs' ->
-      case[ins2] LtEq n x
-      | True -> Cons n xs
-      | False -> Cons x (ins n xs')
+    | {Nil} -> {Cons} n {Nil}
+    | {Cons} x xs' ->
+      case[ins2] {lteq} n x
+      | {True} -> {Cons} n xs
+      | {False} -> {Cons} x (ins n xs')
       end
     end ;
 
-let InsertSort = fix isort xs ->
+let isort = fix isort xs ->
     case[isort1] xs
-    | Nil -> Nil
-    | Cons x xs' -> Insert x (isort xs')
+    | {Nil} -> {Nil}
+    | {Cons} x xs' -> {ins} x (isort xs')
     end ;
 
-let Flatten = fix flat t ->
+let flatten = fix flatten t ->
     case t
-    | Leaf -> Leaf
-    | Node x t1 t2 ->
-      Append (flat t1) (Cons x (flat t2))
+    | {Leaf} -> {Leaf}
+    | {Node} x t1 t2 ->
+      {app} (flatten t1) ({Cons} x (flatten t2))
     end ;

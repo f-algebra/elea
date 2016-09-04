@@ -119,38 +119,59 @@ class Supercompiler {
     supercompile(Env.empty, term)
 
   def supercompile(env: Env, term: Term): Term = {
-    term.drive match {
-      case AppView(fun: Fix, args) if !fun.isFPPF(args) =>
-        val cp = CriticalPair.of(fun, args)
-        env.folds.find(_.criticalPair embedsInto cp) match {
-          case None =>
-            // No existing fold has a matching critical path, so we should continue unrolling
-            val fold = Fold(cp, fun.apply(args))
-            val newEnv = env.withFold(fold)
-            val unfoldedTerm = fold.from.replace(cp.term, cp.termUnfolded).drive(env.rewriteEnv)
-            val supercompiledTerm = supercompile(newEnv, unfoldedTerm)
-            if (!supercompiledTerm.freeVars.contains(fold.foldVar))
-              supercompiledTerm
-            else {
-              val fixBody = Lam(fold.foldVar :: fold.args, supercompiledTerm)
-              Fix(fixBody, fun.index)
-                .apply(fold.args.map(Var(_): Term))
-                .drive
-            }
-          case Some(fold) =>
-            // We've found a matching critical path, so it's time to ripple
-            val (rippledTerm, rippleSub) = ripple(env, fold)(fold.from, term)
-            rippledTerm :/ rippleSub
+    term.drive(env.rewriteEnv) match {
+      case AppView(fun: Fix, args) =>
+        if (fun.isFPPF(args))
+          fun.apply(args)
+        else {
+          val cp = CriticalPair.of(fun, args)
+          env.folds.find(_.criticalPair embedsInto cp) match {
+            case None =>
+              // No existing fold has a matching critical path, so we should continue unrolling
+              val fold = Fold(cp, fun.apply(args))
+              val newEnv = env.withFold(fold)
+              val unfoldedTerm = fold.from.replace(cp.term, cp.termUnfolded).drive(env.rewriteEnv)
+              val supercompiledTerm = supercompile(newEnv, unfoldedTerm)
+              if (!supercompiledTerm.freeVars.contains(fold.foldVar)) {
+                // If there are no folds we could also be trying to apply then supercompilation has completely failed
+                // and we should just return the original term
+                if (env.folds.isEmpty) {
+                  fun.apply(args)
+                } else {
+                  supercompiledTerm
+                }
+              } else {
+                val fixBody = Lam(fold.foldVar :: fold.args, supercompiledTerm)
+                Fix(fixBody, fun.index)
+                  .apply(fold.args.map(Var(_): Term))
+                  .drive(env.rewriteEnv)
+              }
+            case Some(fold) =>
+              // We've found a matching critical path, so it's time to ripple
+              val (rippledTerm, rippleSub) = ripple(env, fold)(fold.from, term)
+              rippledTerm :/ rippleSub
+          }
         }
-        // Constructor or variable function
       case AppView(fun, args) if args.nonEmpty =>
+        // Constructor or variable function, so supercompile the arguments
         App(fun, args.map(supercompile(env, _)))
-      case term: Leq =>
-        Leq(supercompile(env, term.smallerTerm), supercompile(env.invertDirection, term.largerTerm))
+      case leq: Leq =>
+        supercompile(env, leq.smallerTerm) match {
+          case FPPF(fun: Fix, argVars) =>
+            // Apply the least-fixed-point rule
+            val newSmallerTerm = fun
+              .body
+              .betaReduce(NonEmptyList(Lam(argVars, leq.largerTerm)))
+              .apply(argVars.map(Var(_): Term))
+            supercompile(env, Leq(newSmallerTerm, leq.largerTerm))
+          case newSmallerTerm =>
+            Leq(newSmallerTerm, leq.largerTerm).drive(env.rewriteEnv)
+        }
       case term: Case =>
         // Descend into the branches of pattern matches
         val newBranches = term.branches.map(supercompileBranch(env, term.matchedTerm))
-        term.copy(branches = newBranches)
+        val newMatchedTerm = supercompile(env, term.matchedTerm)
+        term.copy(branches = newBranches, matchedTerm = newMatchedTerm).drive(env.rewriteEnv)
       case term =>
         term
     }

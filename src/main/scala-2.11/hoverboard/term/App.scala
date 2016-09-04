@@ -53,7 +53,9 @@ case class App private(fun: Term, args: NonEmptyList[Term]) extends Term with Fi
   override def order(other: Term): Ordering =
     other match {
       case other: App =>
-        (args.size ?|? other.args.size) |+| args.fzipWith(other.args)(_ ?|? _).concatenate
+        args.size ?|? other.args.size |+|
+          fun ?|? other.fun |+|
+          args.fzipWith(other.args)(_ ?|? _).concatenate
       case _ =>
         arbitraryOrderingNumber ?|? other.arbitraryOrderingNumber
     }
@@ -61,7 +63,7 @@ case class App private(fun: Term, args: NonEmptyList[Term]) extends Term with Fi
   override def leftmost: Term = fun.leftmost
 
   override def deepBranches: IList[Term] =
-    args.map(_.deepBranches).sequence.map(xs => App(fun, xs))
+    args.map(_.deepBranches).sequence.map((xs: NonEmptyList[Term]) => App(fun, xs))
 
   override def unfold: Term =
     fun.unfold.betaReduce(args)
@@ -114,6 +116,19 @@ object AppView {
     term match {
       case term: App => Some((term.fun, term.args.list))
       case _ => Some((term, IList.empty[Term]))
+    }
+}
+
+/**
+  * Pattern match out terms in fixed-point promoted form
+  */
+object FPPF {
+  def unapply(term: Term): Option[(Fix, IList[Name])] =
+    term match {
+      case AppView(fun: Fix, args) if fun.isFPPF(args) =>
+        Some((fun, args.map(_.asInstanceOf[Var].name)))
+      case _ =>
+        None
     }
 }
 

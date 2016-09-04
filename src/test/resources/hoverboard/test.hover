@@ -1,15 +1,15 @@
 
 let prop_id_nat =
-    (fix f x -> case x | {0} -> {0} | {Suc} x' -> {Suc} (f x') end)
+    (fix f x -> case x | .0 -> .0 | .Suc x' -> .Suc (f x') end)
     =<
     (fn x -> x) ;
 
 let prop_add_assoc =
-    ({add} ({add} x y) z)
+    (.add (.add x y) z)
     =<
-    ({add} x ({add} y z)) ;
+    (.add x (.add y z)) ;
 
 let prop_rev_self_inverse =
-    ({rev} ({rev} xs))
+    (.rev (.rev xs))
     =<
     xs ;

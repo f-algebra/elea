@@ -11,6 +11,8 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
   override def driveHead(env: Env): Term =
     if (branches.all(_.body == Bot))
       Bot
+    else if (branches.all(_.isIdentity(matchedTerm)))
+      matchedTerm
     else
       matchedTerm.driveHeadCase(env, this)
 

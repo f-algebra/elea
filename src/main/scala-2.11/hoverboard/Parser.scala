@@ -45,7 +45,7 @@ object Parser {
       .map(n => Name(n._1, n._2))
     val definitionName: P[String] = P((uppercase | lowercase).repX(1).!)
 
-    val definedTerm: P[Term] = P("{" ~~ definitionName ~~ "}" ~/).map(n => program.definitionOf(n))
+    val definedTerm: P[Term] = P("." ~~ definitionName ~/).map(n => program.definitionOf(n))
     val fixIndex: P[Name] = P("[" ~ varName ~ "]")
     val caseIndex: P[Case.Index] = P(("[" ~ varName ~ "]").?).map(_.map(Case.Index).getOrElse(Case.freshIndex))
 
@@ -64,9 +64,9 @@ object Parser {
     val pattern: P[Pattern] = P(definedTerm ~ varName.rep).map(m => Pattern(m._1.asInstanceOf[Constructor], IList(m._2 : _*)))
 
     val branch: P[Branch] = {
-      val defaultBranch: P[Branch] = P("|" ~ "else" ~ "->" ~/ term).map(DefaultBranch)
-      val patternBranch: P[Branch] = P("|" ~ pattern ~ "->" ~/ term).map(m => PatternBranch(m._1, m._2))
-      P(defaultBranch | patternBranch)
+      val defaultBranch: P[Branch] = P("else" ~/ "->" ~/ term).map(DefaultBranch)
+      val patternBranch: P[Branch] = P(pattern ~/ "->" ~/ term).map(m => PatternBranch(m._1, m._2))
+      P("|" ~/ (defaultBranch | patternBranch))
     }
 
     val constructorDef: P[Constructor] = {

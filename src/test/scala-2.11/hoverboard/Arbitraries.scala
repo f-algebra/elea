@@ -16,22 +16,22 @@ object Arbitraries {
   )
 
   private val natTerms = Seq(
-    term"{0}",
-    term"{Suc} nat_1",
-    term"{add} nat_1 nat_2",
-    term"{mul} nat_1 nat_2",
-    term"unfold {add} nat_1 nat_2",
-    term"unfold {mul} nat_1 nat_2",
-    term"case nat_1 | {0} -> nat_2 | {Suc} y -> nat_3 end",
+    term".0",
+    term".Suc nat_1",
+    term".add nat_1 nat_2",
+    term".mul nat_1 nat_2",
+    term"unfold .add nat_1 nat_2",
+    term"unfold .mul nat_1 nat_2",
+    term"case nat_1 | .0 -> nat_2 | .Suc y -> nat_3 end",
     term"f nat_1",
-    term"case bool_1 | {True} -> nat_1 | {False} -> nat_2 end"
+    term"case bool_1 | .True -> nat_1 | .False -> nat_2 end"
   )
 
   private val boolTerms = Seq(
-    term"{False}",
-    term"{True}",
-    term"{lt} nat_1 nat_2",
-    term"case nat_1 | {0} -> bool_1 | {Suc} y -> bool_2 end"
+    term".False",
+    term".True",
+    term".lt nat_1 nat_2",
+    term"case nat_1 | .0 -> bool_1 | .Suc y -> bool_2 end"
   )
 
   private def mutateTerm(term: Term): Gen[Term] = for {

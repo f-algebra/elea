@@ -53,7 +53,7 @@ object Parser {
     val simpleTerm: P[Term] = P(bot | unfold | termVar | definedTerm | "(" ~ term ~ ")")
     val unfold: P[Term] = P("unfold" ~/ definedTerm).map(_.unfold)
     val fix: P[Fix] = P("fix" ~/ fixIndex.? ~ varName.rep(1) ~ "->" ~/ term)
-      .map(m => Fix(Lam(IList(m._2 : _*).toNel.get, m._3), m._1.map(Fix.Finite).getOrElse(Fix.freshIndex)))
+      .map(m => Fix(Lam(IList(m._2 : _*).toNel.get, m._3), m._1.map(Fix.finite).getOrElse(Fix.freshOmegaIndex)))
     val lam: P[Term] = P("fn" ~/ varName.rep(1) ~ "->" ~/ term).map(m => Lam(IList(m._1 : _*), m._2))
     val app: P[Term] = P(simpleTerm ~ simpleTerm.rep).map(m => m._1(m._2 : _*))
     val bot: P[Term] = P("_|_" | "⊥").map(_ => Bot)

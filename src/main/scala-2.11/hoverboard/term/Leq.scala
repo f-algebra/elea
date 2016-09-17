@@ -24,7 +24,7 @@ case class Leq(smallerTerm: Term, largerTerm: Term)
       case smallerTerm: Case =>
         C(x => Leq(Var(x), largerTerm))
           .applyToBranches(smallerTerm)
-          .driveBranches(env)
+          .driveIgnoringMatchedTerm(env)
       case _ =>
         this
     }

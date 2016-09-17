@@ -12,54 +12,48 @@ class SupercompilerTest extends TestConfig {
 
   import Util._
 
-//  trait NoSupercompile extends Supercompiler {
-//    override def supercompile(env: Env, term: Term): Term = term
-//  }
-//
-//  trait NoCritique extends Supercompiler {
-//    override def critique(env: Env)(skeletons: ISet[Term], goal: Term): (Term, Substitution) =
-//      (goal, Substitution.empty)
-//  }
-//
-//  trait NoRipple extends Supercompiler {
-//    override def ripple(env: Env)(skeleton: Term, goal: Term): (Term, Substitution) =
-//      (goal, Substitution.empty)
-//  }
+  val supercompiler = new Supercompiler
+  import supercompiler._
 
-  class TestSupercompiler extends Supercompiler {
-    def testRipple(skeleton: Term, goal: Term): (Fold, Term) = {
-      val (drivenGoal, drivenSkel) = (goal.drive, skeleton.drive)
-      val AppView(skelFix: Fix, skelArgs) = drivenSkel
-      val fakeCp = CriticalPair(IList.empty, skelFix, skelArgs)
-      val fold = Fold(fakeCp, drivenSkel)
-      val (term, sub) = ripple(Env.empty, fold)(fold.from, drivenGoal)
-      (fold, term :/ sub)
-    }
-
-    def assertSuccesfulCritique(skeletons: ISet[Term], goal: Term): Unit = {
-      val (drivenGoal, drivenSkels) = (goal.drive, skeletons.map(_.drive))
-      val (term, sub) = critique(Env.empty)(drivenSkels, drivenGoal)
-      sub should be ('nonEmpty)
-      term :/ sub shouldEqual drivenGoal
-      ISet.fromList(sub.toMap.values) shouldEqual skeletons
-    }
+  def testRipple(skeleton: Term, goal: Term, context: Context, gap: Term): Unit = {
+    val (rippleTerm, rippleSub) = ripple(skeleton.drive, goal.drive)
+    rippleSub.size shouldEqual 1
+    val Seq((rippleVar, rippleGap)) = rippleSub.toMap.toList
+    rippleTerm shouldEqual context.apply(Var(rippleVar)).drive
+    rippleGap shouldEqual gap.drive
   }
-
-  val supercompiler = new TestSupercompiler
 
   "rippling" should "work for simple examples" in {
-    import supercompiler.testRipple
+    testRipple(
+      term".add (.add x y) z",
+      term".Suc (.add (.add x2 y) z)",
+      C(x => term".Suc ${Var(x)}"),
+      term".add (.add x2 y) z")
 
-    val (addFold, addTerm) = testRipple(term".add (.add x y) z", term".Suc (.add (.add x2 y) z)")
-    addTerm shouldEqual term".Suc (${addFold.foldVar} x2 y z)"
-
-    val (revFold, revTerm) = testRipple(term".rev (.app xs ys)", term".app (.rev (.app xs2 ys)) (.Cons x .Nil)")
-    revTerm shouldEqual term".app (${revFold.foldVar} xs2 ys) (.Cons x .Nil)".drive
+    testRipple(
+      term".rev (.app xs ys)",
+      term".app (.rev (.app xs2 ys)) (.Cons x .Nil)",
+      C(x => term".app ${Var(x)} (.Cons x .Nil)"),
+      term".rev (.app xs2 ys)")
   }
 
-  "supercompilation" should "work for simple examples" in {
-    import supercompiler.supercompile
+  it should "work for examples requiring constructor fission" in {
+    testRipple(
+      term".rev (.rev xs)",
+      term".rev (.snoc n (.rev xs2))",
+      C(x => term".Cons n ${Var(x)}"),
+      term".rev (.rev xs2)")
+  }
 
+//  "critiquing" should "work for examples requiring constructor fission" in {
+//    import supercompiler.testCritique
+//
+//    val (revTerm, revSub) = testCritique(ISet.fromList(List(term".rev xs")), term".rev (.snoc n xs)")
+//    revSub.boundVars.size shouldBe 1
+//    revTerm shouldEqual term".Cons n ${revSub.boundVars.toList.head}"
+//  }
+
+  "supercompilation" should "work for simple examples" in {
     supercompile(term".add x y") shouldEqual term".add x y".drive
     supercompile(term".add (.add x y) z") shouldEqual term".add x (.add y z)".drive
     supercompile(term".rev (.app xs (.Cons y .Nil))") shouldEqual term".revSnoc y xs".drive
@@ -71,7 +65,7 @@ class SupercompilerTest extends TestConfig {
     .filterKeys(_.startsWith("prop"))
     .foreach { case (propName, propTerm) =>
       it should s"prove $propName in test.hover" in {
-        val forDebugging = propName
+        val name = propName
         supercompiler.supercompile(propTerm) shouldEqual Truth
       }
     }

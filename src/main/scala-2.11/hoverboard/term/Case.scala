@@ -16,8 +16,14 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
     else
       matchedTerm.driveHeadCase(env, this)
 
-  def driveBranches(env: Env): Case =
+  final def driveBranches(env: Env): Case =
     copy(branches = branches.map(_.drive(env, matchedTerm)))
+
+  /**
+    * Re-drive after branches have been modified, but when we know the matched term has not been altered.
+    */
+  final def driveIgnoringMatchedTerm(env: Env): Term =
+    driveBranches(env).driveHead(env)
 
   override protected def driveSubterms(env: Env): Term =
     copy(matchedTerm = matchedTerm.drive(env)).driveBranches(env)
@@ -26,13 +32,13 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
   override def driveHeadApp(env: Env, args: NonEmptyList[Term]): Term =
     C(x => App(Var(x), args))
       .applyToBranches(this)
-      .driveBranches(env)
+      .driveIgnoringMatchedTerm(env)
 
   // Case-case disributivity rule
   override def driveHeadCase(env: Env, enclosingCase: Case): Term =
     C(x => enclosingCase.copy(matchedTerm = Var(x)))
       .applyToBranches(this)
-      .driveBranches(env)
+      .driveIgnoringMatchedTerm(env)
 
   override def :/(sub: Substitution): Term =
     Case(matchedTerm :/ sub, branches.map(_ :/ sub), index)
@@ -112,6 +118,8 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
     copy(branches = branches.map(_.freshen))
 
   override def freshenIndices: Case = copy(index = Case.freshIndex)
+
+  override lazy val signature: IList[Case.Index] = index +: branches.list.flatMap(_.signature)
 }
 
 object Case {

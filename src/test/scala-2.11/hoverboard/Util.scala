@@ -4,15 +4,26 @@ import hoverboard.term.{Context, Term}
 import org.scalactic.Equality
 import org.scalatest.enablers.{Emptiness, Containing}
 
-import scala.concurrent._
-import scalaz.ISet
+import scalaz._
+import Scalaz._
 
 object Util {
 
   implicit object TermAlphaEqModuloIndices extends Equality[Term] {
     override def areEqual(a: Term, b: Any): Boolean =
       b match {
-        case b: Term => a.removeIndices =@= b.removeIndices
+        case b: Term => a =@= b
+        case _ => false
+      }
+  }
+
+  implicit object TermSetAlphaEq extends Equality[ISet[Term]] {
+    override def areEqual(a: ISet[Term], b: Any): Boolean =
+      b match {
+        case b: ISet[_] =>
+          a.size == b.size &&
+            b.all(_.isInstanceOf[Term]) &&
+            a.all(t => b.any(_.asInstanceOf[Term] =@= t))
         case _ => false
       }
   }
@@ -20,7 +31,7 @@ object Util {
   implicit object ContextAlphaEq extends Equality[Context] {
     override def areEqual(a: Context, b: Any): Boolean =
       b match {
-        case b: Context => a.removeIndices =@= b.removeIndices
+        case b: Context => a =@= b
         case _ => false
       }
   }

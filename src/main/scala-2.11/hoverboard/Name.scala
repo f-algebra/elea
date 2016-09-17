@@ -27,5 +27,7 @@ object Name {
 
   def apply(name: String): Name = Name(name, None)
 
-  def fresh(baseName: String): Name = Name(baseName)freshen
+  def fresh(baseName: String): Name = Name(baseName).freshen
+
+  def asDefinition(name: String): String = s".$name"
 }

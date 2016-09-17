@@ -166,15 +166,15 @@ class TermTest extends TestConfig {
       .drive
       .asInstanceOf[Fix]
       .fissionConstructorContext
-    ctx shouldEqual C(x => term"fn f xs -> .Cons y (f xs)".betaReduce(NonEmptyList(Var(x))))
-    val otherFix = term"fix[a] rev xs -> case xs | .Nil -> .Nil | .Cons x xs' -> .snoc x (rev xs') end".drive
+    ctx shouldEqual C(x => term".Cons y ${Var(x)}")
+    val otherFix = term"fix rev xs -> case xs | .Nil -> .Nil | .Cons x xs' -> .snoc x (rev xs') end".drive
     otherFix shouldEqual (newFix: Term)
   }
 
   "homeomorphic embedding" should "work properly" in {
     term"x" couplingRule term".lt x (.Suc x)" shouldBe false
-    term".lt x (.Suc x)".removeIndices strictlyEmbedsInto term".lt x (.Suc x)".removeIndices shouldBe false
-    term".lt x (.Suc x)".removeIndices couplingRule term".lt x (.Suc x)".removeIndices shouldBe true
+    term".lt x (.Suc x)" strictlyEmbedsInto term".lt x (.Suc x)" shouldBe false
+    term".lt x (.Suc x)" couplingRule term".lt x (.Suc x)" shouldBe true
   }
 
   "fppf" should "be recognisable" in {
@@ -189,22 +189,29 @@ class TermTest extends TestConfig {
     term".lt".asInstanceOf[Fix].strictArgIndices shouldEqual IList(0, 1)
   }
 
-  def checkedMsg(t1: Term, t2: Term): (Term, Substitution, Substitution) = {
-    val (ctx, sub1, sub2) = t1 ᴨ t2
-    ctx :/ sub1 shouldEqual t1
-    ctx :/ sub2 shouldEqual t2
-    sub1.toMap.keySet shouldEqual sub2.toMap.keySet
-    (ctx, sub1, sub2)
-  }
-
-  "most specific generalisation" should "do nothing for equal terms" in {
-    forAll { (t: Term) =>
-      val (ctx, sub1, sub2) = checkedMsg(t.freshen, t)
-      sub1.isEmpty shouldBe true
-      sub2.isEmpty shouldBe true
-      ctx shouldEqual t
-    }
-  }
+  // MSG doesn't play well with variable capture, time for a new approach!
+//  def checkedMsg(t1: Term, t2: Term): (Term, Substitution, Substitution) = {
+//    val (ctx, sub1, sub2) = t1 ᴨ t2
+//    ctx :/ sub1 shouldEqual t1
+//    ctx :/ sub2 shouldEqual t2
+//    sub1.toMap.keySet shouldEqual sub2.toMap.keySet
+//    (ctx, sub1, sub2)
+//  }
+//
+//  "most specific generalisation" should "do nothing for equal terms" in {
+//    forAll { (t: Term) =>
+//      val (ctx, sub1, sub2) = checkedMsg(t.freshen, t)
+//      sub1.isEmpty shouldBe true
+//      sub2.isEmpty shouldBe true
+//      ctx shouldEqual t
+//    }
+//  }
+//g
+//  it should "work for rev-snoc" in {
+//    val (ctx, leftSub, rightSub) = checkedMsg(term".rev (.snoc n (.rev xs))".drive, term".rev (.rev xs2)".drive)
+//    leftSub.boundVars.size shouldBe 1
+//    ctx :/ Var("ys") / leftSub.boundVars.toList.head shouldEqual term".rev ys".drive
+//  }
 
   "replace" should "reverse substitution" in {
     forAll { (t1: Term, t2: Term) =>

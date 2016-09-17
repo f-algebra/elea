@@ -98,7 +98,7 @@ abstract class TermLike[This <: TermLike[This]] {
   }
 
   /**
-    * All sub-terms containing all of the provided variables
+    * All sub-terms containing all of the provided variables. Is aware of variable capture.
     */
   final def subtermsContaining(vars: ISet[Name]): ISet[Term] =
     ISet.unions(immediateSubtermsWithBindings.map { case (bindings, subterm) =>
@@ -160,12 +160,6 @@ abstract class TermLike[This <: TermLike[This]] {
     throw new IllegalAccessException("Don't use hash based collections for term-like things")
 
   /**
-    * Set all fix indices to [[Fix.Omega]]. Useful if you want to check equality modulo fix indices.
-    */
-  def removeIndices: This =
-    mapImmediateSubterms(_.removeIndices)
-
-  /**
     * Replace all bound variables with fresh ones.
     * So far I think this is only useful for testing.
     */
@@ -175,4 +169,10 @@ abstract class TermLike[This <: TermLike[This]] {
     * Replace all [[Case.Index]] and [[Fix.Index]] with fresh ones. Used after reading a term definition.
     */
   def freshenIndices: This = mapImmediateSubterms(_.freshenIndices)
+
+  /**
+    * The syntactic signature of a term is the list of the case indices it contains, excluding those of any fixed-points
+    */
+  lazy val signature: IList[Case.Index] =
+    immediateSubterms.flatMap(_.signature)
 }

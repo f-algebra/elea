@@ -71,9 +71,10 @@ class DrivingTest extends TestConfig {
     term".lt x y".drive shouldEqual term".lt x y"
   }
 
-  it should "unfold fixed points with constructor arguments safely" in {
+  it should "unfold fixed points with constructor arguments" in {
     term".add (.Suc x) y".drive shouldEqual term".Suc (.add x y)".drive
     term".rev (.Cons x xs)".drive shouldEqual term".app (.rev xs) (.Cons x .Nil)".drive
+    term".add .0 (.add x y)".drive shouldEqual term".add x y".drive
   }
 
   it should "not unfold fixed points with constructor arguments dangerously" in {
@@ -96,6 +97,7 @@ class DrivingTest extends TestConfig {
   }
 
   it should "float pattern matching out of the left hand side of =<" in {
+    term"(case x | .0 -> y end) =< z".drive shouldEqual term"case x | .0 -> y =< z end"
     term"(case x | .0 -> .add y z end) =< .add x (.add y z)".drive shouldEqual ⊥
   }
 }

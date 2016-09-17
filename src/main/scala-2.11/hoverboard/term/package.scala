@@ -18,12 +18,5 @@ package object term {
   implicit val patternOrder: Order[Pattern] =
     Order.orderBy((x: Pattern) => (x.constructor.name, x.bindings))
 
-  implicit val fixIndexOrder: Order[Fix.Index] = (x: Index, y: Index) => (x, y) match {
-    case (Omega, Omega) => EQ
-    case (Omega, _) => GT
-    case (_, Omega) => LT
-    case (Finite(n), Finite(m)) => n ?|? m
-  }
-
   implicit def stringToCaseIndex(name: String): Case.Index = Case.Index(Name(name))
 }

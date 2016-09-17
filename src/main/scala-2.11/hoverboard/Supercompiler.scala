@@ -7,8 +7,7 @@ import scalaz.Scalaz._
 import scalaz._
 
 /**
-  * `supercompile` -> `ripple` -> `critique` -> `supercompiler`,
-  * where -> means _calls_
+  * `supercompile` calls `ripple` calls `critique` calls `supercompile`
   */
 class Supercompiler {
 
@@ -18,7 +17,7 @@ class Supercompiler {
     (skeleton, goal) match {
       case (AppView(skelFun, skelArgs), AppView(goalFun, goalArgs)) if skelArgs.length == goalArgs.length =>
         (skelFun, goalFun) match {
-          case (skelFun: Fix, goalFun: Fix) => skelFun.index == goalFun.index
+          case (skelFun: Fix, goalFun: Fix) => skelFun.body.signature == goalFun.body.signature
           case (skelFun: Var, goalFun: Var) => skelFun == goalFun
           case _ => false
         }
@@ -26,8 +25,8 @@ class Supercompiler {
         false
     }
 
-  final def dive(env: Env, fold: Fold)(skeleton: Term, goal: Term): (Term, Substitution) = {
-    val (rippledGoalSubterms, rippleSubs) = goal.immediateSubterms.map(ripple(env, fold)(skeleton, _)).unzip
+  final def dive(env: Env, skeleton: Term, goal: Term): (Term, Substitution) = {
+    val (rippledGoalSubterms, rippleSubs) = goal.immediateSubterms.map(ripple(env, skeleton, _)).unzip
     Substitution.union(rippleSubs) match {
       case None =>
         throw new SubstitutionsNonUnifiableError(s"$skeleton dive $goal")
@@ -45,17 +44,17 @@ class Supercompiler {
         (mergedCtxSub, mergedGenSub)
     }
 
-  final def couple(env: Env, fold: Fold)(skeleton: Term, goal: Term): (Term, Substitution) = {
+  final def couple(env: Env, skeleton: Term, goal: Term): (Term, Substitution) = {
     val (ctx, skelSub, goalSub) = skeleton ᴨ goal
     val rippled: IMap[Name, (Term, Substitution)] =
-      skelSub.toMap.intersectionWith(goalSub.toMap)(ripple(env, fold))
+      skelSub.toMap.intersectionWith(goalSub.toMap)(ripple(env, _, _))
     val (mergedCtxSub, mergedGenSub) = mergeRipples(rippled)
     // Simplifying assumption because I'm too hungover to figure out the general case
     mergedCtxSub.boundVars.toList match {
       case Seq(ctxVar) =>
         val newSkeletons = mergedGenSub.boundVars.map(x => ctx :/ Var(x) / ctxVar)
-        val (critiquedCtx, critiquedSub) = critique(env)(newSkeletons, ctx :/ mergedCtxSub)
-        val fullSub = (critiquedSub ++ mergedGenSub).getOrElse {
+        val (critiquedCtx, critiquedSub) = critique(env, newSkeletons, ctx :/ mergedCtxSub)
+        val fullSub = (mergedGenSub ++ critiquedSub).getOrElse {
           throw new SubstitutionsNonUnifiableError(s"$skeleton ++ $goal")
         }
         (critiquedCtx, fullSub)
@@ -65,55 +64,40 @@ class Supercompiler {
   }
 
   // TODO potential optimisation: entire process could fail when critique fails
-  def critique(env: Env)(skeletons: ISet[Term], goal: Term): (Term, Substitution) = {
-    if (skeletons.isEmpty) {
-      (goal, Substitution.empty)
+  def critique(env: Env, skeletons: ISet[Term], goal: Term): (Term, Substitution) = {
+    if (skeletons.isEmpty || skeletons.size == 1 && skeletons.toList.head =@= goal) {
+      val genVar = Name.fresh("χ")
+      (Var(genVar), goal / genVar)
     } else {
-      val overlap = ISet.fromFoldable(goal.subterms).intersection(skeletons)
-      if (!overlap.isEmpty) {
-        val matchedSkeletons = overlap.toIList
-        ???
-      } else {
-        lazy val failure = (goal, Substitution.empty)
-        if (env.alreadySeen(goal))
-          failure
-        else {
-          /*supercompile(goal)*/ goal match {
-            case AppView(goalFun: Fix, goalArgs) =>
-              goalFun.fissionConstructorContext match {
-                case Some((fissionedCtx, fissionedFix)) =>
-                  val newGoal = fissionedCtx.apply(fissionedFix).apply(goalArgs).drive
-                  critique(env.havingSeen(goal))(skeletons, newGoal)
-                case None =>
-                  failure
-              }
-            case _ =>
-              failure
-          }
+      lazy val failure = (goal, Substitution.empty)
+      if (env.alreadySeen(goal))
+        failure
+      else {
+        supercompile(goal) match {
+          case AppView(goalFun: Fix, goalArgs) =>
+            goalFun.fissionConstructorContext match {
+              case Some((fissionedCtx, fissionedFix)) =>
+                val newGoal = fissionedFix.apply(goalArgs)
+                val (critiquedGoal, critiquedSub) = critique(env.havingSeen(goal), skeletons, newGoal)
+                (fissionedCtx.apply(critiquedGoal), critiquedSub)
+              case None =>
+                failure
+            }
+          case _ =>
+            failure
         }
       }
     }
   }
 
-  def ripple(env: Env, fold: Fold)(skeleton: Term, goal: Term): (Term, Substitution) =
+  def ripple(skeleton: Term, goal: Term): (Term, Substitution) =
+    ripple(Env.empty, skeleton, goal)
+
+  def ripple(env: Env, skeleton: Term, goal: Term): (Term, Substitution) =
     if (!couplesWith(skeleton, goal))
-      dive(env, fold)(skeleton, goal)
-    else {
-      val (coupledGoal, coupledSub) = couple(env, fold)(skeleton, goal)
-      val rippledGoal = coupledGoal :/ coupledSub
-      skeleton unifyLeft rippledGoal match {
-        case Some(rippleUni) =>
-          fold.from.unifyLeft(skeleton) match {
-            case None =>
-              val genVar = Name.fresh("ξ")
-              (Var(genVar), rippledGoal / genVar)
-            case Some(foldUni) =>
-              ((fold.to :/ foldUni) :/ rippleUni, Substitution.empty)
-          }
-        case _ =>
-          (coupledGoal, coupledSub)
-      }
-    }
+      dive(env, skeleton, goal)
+    else
+      couple(env, skeleton, goal)
 
   final def supercompile(term: Term): Term =
     supercompile(Env.empty, term)
@@ -130,7 +114,7 @@ class Supercompiler {
               // No existing fold has a matching critical path, so we should continue unrolling
               val fold = Fold(cp, fun.apply(args))
               val newEnv = env.withFold(fold)
-              val unfoldedTerm = fold.from.replace(cp.term, cp.termUnfolded).drive(env.rewriteEnv)
+              val unfoldedTerm = fold.unfoldedFrom.drive(env.rewriteEnv)
               val supercompiledTerm = supercompile(newEnv, unfoldedTerm)
               if (!supercompiledTerm.freeVars.contains(fold.foldVar)) {
                 // If there are no folds we could also be trying to apply then supercompilation has completely failed
@@ -142,13 +126,13 @@ class Supercompiler {
                 }
               } else {
                 val fixBody = Lam(fold.foldVar :: fold.args, supercompiledTerm)
-                Fix(fixBody, fun.index)
+                Fix(fixBody, cp.fix.index)
                   .apply(fold.args.map(Var(_): Term))
                   .drive(env.rewriteEnv)
               }
             case Some(fold) =>
               // We've found a matching critical path, so it's time to ripple
-              val (rippledTerm, rippleSub) = ripple(env, fold)(fold.from, term)
+              val (rippledTerm, rippleSub) = ripple(env, fold.from, term)
               rippledTerm :/ rippleSub
           }
         }
@@ -195,15 +179,17 @@ class Supercompiler {
 
 object Supercompiler {
 
-  case class Fold private(criticalPair: CriticalPair, from: Term, to: Term, foldVar: Name, args: IList[Name])
+  case class Fold (
+       criticalPair: CriticalPair,
+       nonReindexedFrom: Term) {
 
-  object Fold {
-    def apply(criticalPair: CriticalPair, from: Term): Fold = {
-      val foldVar = Name.fresh("μ")
-      val args = from.freeVars.toIList
-      val to = Var(foldVar).apply(args.map(Var(_): Term))
-      Fold(criticalPair, from, to, foldVar, args)
-    }
+    val foldVar: Name = Name.fresh("μ")
+    val index: Fix.Index = Fix.freshFiniteIndex
+    val args: IList[Name] = nonReindexedFrom.freeVars.toIList
+    val to: Term = Var(foldVar).apply(args.map(Var(_): Term))
+    val reindexedFix: Fix = criticalPair.fix.copy(index = index)
+    val from: Term = nonReindexedFrom.replace(criticalPair.term, reindexedFix.apply(criticalPair.args))
+    val unfoldedFrom: Term = nonReindexedFrom.replace(criticalPair.term, reindexedFix.unfold.apply(criticalPair.args))
   }
 
   case class Env(rewriteEnv: rewrite.Env,

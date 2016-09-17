@@ -16,11 +16,6 @@ case class CriticalPair(
   def term: Term = fix.apply(args)
 
   /**
-    * The `term` of this critical pair with its fixed-point unfolded
-    */
-  def termUnfolded: Term = fix.unfold.apply(args)
-
-  /**
     * Check whether the path of this pair is a sub-path of the path of an`other` pair.
     * Used to check whether we should continue unfolding fixed-points in [[Supercompiler.supercompile()]].
     */

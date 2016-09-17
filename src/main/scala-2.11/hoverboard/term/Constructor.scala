@@ -21,7 +21,7 @@ case class Constructor(name: Name, argumentCount: Int, recursiveArgs: ISet[Int])
   override def driveHeadCase(env: Env, enclosingCase: Case): Term =
     reduceCase(IList.empty, enclosingCase.branches).drive(env)
 
-  override def toString = name.toString
+  override def toString = Name.asDefinition(name.toString)
 
   def arbitraryOrderingNumber: Int = 4
 

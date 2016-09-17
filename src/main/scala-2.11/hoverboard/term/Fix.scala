@@ -4,6 +4,7 @@ import hoverboard._
 import hoverboard.rewrite.Env
 import hoverboard.Name
 
+import scalaz.Ordering.{LT, GT, EQ}
 import scalaz.{Name => _, _}
 import Scalaz._
 
@@ -43,7 +44,7 @@ case class Fix(body: Term,
         val caseArg = args.index(caseIdx).get.asInstanceOf[Case]
         C(x => this.apply(args.list.setAt(caseIdx, Var(x))))
           .applyToBranches(caseArg)
-          .driveBranches(env)
+          .driveIgnoringMatchedTerm(env)
       case None =>
         body match {
           case body: Lam if args.any(t => t.leftmost.isInstanceOf[Constructor] || t == ⊥) =>
@@ -51,7 +52,7 @@ case class Fix(body: Term,
             // the fixed-point
             val originalTerm = App(this, args)
             val driven = App(body.body, args).drive(env)
-            lazy val wasProductive = driven.terms.all {
+            lazy val wasProductive = driven.subtermsContaining(ISet.singleton(body.binding)).all {
               case term@App(Var(f), xs) if f == body.binding =>
                 term.strictlyEmbedsInto(App(Var(f), args))
               case _ =>
@@ -76,7 +77,7 @@ case class Fix(body: Term,
   }
 
   override def toString: String =
-    name.getOrElse {
+    name.map(n => Name.asDefinition(n) + index.toString).getOrElse {
       val (bindings, innerBody) = body.flattenLam
       s"fix$index ${bindings.toList.mkString(" ")} -> $innerBody"
     }
@@ -148,7 +149,7 @@ case class Fix(body: Term,
 
   override def zip(other: Term): Option[IList[(Term, Term)]] =
     other match {
-      case other: Fix if index == other.index =>
+      case other: Fix if index.isOmega && other.index.isOmega || index == other.index =>
         Some(IList((body, other.body)))
       case _ =>
         None
@@ -196,7 +197,7 @@ case class Fix(body: Term,
           stripped <- ctx
             .strip(drivenBody)
             .tap(_ => assert(fixArgs == fixArgs2))
-        } yield (expandedCtx, Fix(Lam(body.binding, Lam(fixArgs, stripped)), index))
+        } yield (ctx, Fix(Lam(body.binding, Lam(fixArgs, stripped)), index))
       case _ =>
         None
     }
@@ -223,9 +224,6 @@ case class Fix(body: Term,
 
   override lazy val indices = super.indices.insert(index)
 
-  override def removeIndices: Term =
-    copy(index = Fix.Omega).mapImmediateSubterms(_.removeIndices)
-
   /**
     * Is fixed-point promoted form
     */
@@ -234,19 +232,29 @@ case class Fix(body: Term,
       args.distinct == args &&
       freeVars.intersection(ISet.unions(args.map(_.freeVars).toList)).isEmpty
 
-  override def freshenIndices: Fix = copy(index = Fix.freshIndex)
+  override def freshenIndices: Fix = copy(index = index.freshen)
+
+  override lazy val signature: IList[Case.Index] = IList.empty
 }
 
 object Fix {
-  sealed abstract class Index
+  case class Index private(name: Name, isFinite: Boolean) {
+    override def toString =
+      if (isFinite) s"[$name]" else ""
 
-  case object Omega extends Index {
-    override def toString = ""
+    def asFinite: Index = copy(isFinite = true)
+    def asOmega: Index = copy(isFinite = false)
+    def freshen: Index = copy(name = Name.fresh("α"))
+    def isOmega: Boolean = !isFinite
   }
 
-  case class Finite(name: Name) extends Index {
-    override def toString = s"[$name]"
-  }
+  def emptyIndex: Index = omega(Name("empty"))
+  def finite(name: Name): Index = Index(name, true)
+  def omega(name: Name): Index = Index(name, false)
 
-  def freshIndex: Finite = Finite(Name.fresh("α"))
+  def freshOmegaIndex: Index = emptyIndex.freshen.asOmega
+  def freshFiniteIndex: Index = emptyIndex.freshen.asFinite
+
+  implicit val fixIndexOrder: Order[Fix.Index] = (x: Index, y: Index) =>
+    x.isFinite ?|? y.isFinite |+| x.name ?|? y.name
 }

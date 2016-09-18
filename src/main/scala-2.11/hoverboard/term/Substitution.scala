@@ -56,8 +56,12 @@ case class Substitution private (toMap: IMap[Name, Term]) extends FirstOrder[Sub
     * For example, a mapping from a fresh variable.
     */
   def +!(elem: (Name, Term)): Substitution = {
-    require(!boundVars.contains(elem._1), s"${elem._1} already exists in this substitution")
+    require(!boundVars.contains(elem._1), s"${elem._1} already exists in substitution $this")
     (this + elem).get
+  }
+
+  def ++!(other: Substitution): Substitution = {
+    other.toMap.toList.foldLeft[Substitution](this)((sub, elem) => sub +! elem)
   }
 
   def ++(other: Substitution): Option[Substitution] =
@@ -109,4 +113,9 @@ object Substitution {
 
   def union(subs: IList[Substitution]): Option[Substitution] =
     merge(subs.map(Some(_)))
+
+  def unionDisjoint(subs: IList[Substitution]): Substitution =
+    union(subs).getOrElse {
+      throw new IllegalArgumentException(s"Tried to union overlapping substitutions: $subs")
+    }
 }

@@ -1,12 +1,6 @@
 package hoverboard
 
-import hoverboard.Supercompiler.{Fold, Env}
 import hoverboard.term._
-import org.scalacheck.Arbitrary
-import org.scalatest.prop.PropertyChecks
-import org.scalatest.{Matchers, FlatSpec}
-
-import scalaz.{IList, ISet}
 
 class SupercompilerTest extends TestConfig {
 
@@ -15,35 +9,32 @@ class SupercompilerTest extends TestConfig {
   val supercompiler = new Supercompiler
   import supercompiler._
 
-  def testRipple(skeleton: Term, goal: Term, context: Context, gap: Term): Unit = {
-    val (rippleTerm, rippleSub) = ripple(skeleton.drive, goal.drive)
-    rippleSub.size shouldEqual 1
-    val Seq((rippleVar, rippleGap)) = rippleSub.toMap.toList
-    rippleTerm shouldEqual context.apply(Var(rippleVar)).drive
-    rippleGap shouldEqual gap.drive
+  def testRipple(skeleton: Term, goal: Term, context: Term): Unit = {
+    val (rippledSkeletons, rippledGoal, rippleSub) = ripple(skeleton.drive, goal.drive)
+    rippledGoal :/ rippleSub shouldEqual goal.drive
+    rippledSkeletons.toList.foreach(_ shouldBe a [Var])
+    context.apply(rippledSkeletons).drive shouldEqual rippledGoal
   }
 
   "rippling" should "work for simple examples" in {
     testRipple(
       term".add (.add x y) z",
       term".Suc (.add (.add x2 y) z)",
-      C(x => term".Suc ${Var(x)}"),
-      term".add (.add x2 y) z")
+      term".Suc")
 
     testRipple(
       term".rev (.app xs ys)",
       term".app (.rev (.app xs2 ys)) (.Cons x .Nil)",
-      C(x => term".app ${Var(x)} (.Cons x .Nil)"),
-      term".rev (.app xs2 ys)")
+      term"fn xs -> .app xs (.Cons x .Nil)")
   }
 
-  it should "work for examples requiring constructor fission" in {
-    testRipple(
-      term".rev (.rev xs)",
-      term".rev (.snoc n (.rev xs2))",
-      C(x => term".Cons n ${Var(x)}"),
-      term".rev (.rev xs2)")
-  }
+//  it should "work for examples requiring constructor fission" in {
+//    testRipple(
+//      term".rev (.rev xs)",
+//      term".rev (.snoc n (.rev xs2))",
+//      C(x => term".Cons n ${Var(x)}"),
+//      term".rev (.rev xs2)")
+//  }
 
 //  "critiquing" should "work for examples requiring constructor fission" in {
 //    import supercompiler.testCritique

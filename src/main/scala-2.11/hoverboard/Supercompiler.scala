@@ -13,91 +13,89 @@ class Supercompiler {
 
   import Supercompiler._
 
-  final def couplesWith(skeleton: Term, goal: Term): Boolean =
-    (skeleton, goal) match {
-      case (AppView(skelFun, skelArgs), AppView(goalFun, goalArgs)) if skelArgs.length == goalArgs.length =>
-        (skelFun, goalFun) match {
-          case (skelFun: Fix, goalFun: Fix) => skelFun.body.signature == goalFun.body.signature
-          case (skelFun: Var, goalFun: Var) => skelFun == goalFun
-          case _ => false
-        }
-      case _ =>
-        false
-    }
-
-  final def dive(env: Env, skeleton: Term, goal: Term): (Term, Substitution) = {
-    val (rippledGoalSubterms, rippleSubs) = goal.immediateSubterms.map(ripple(env, skeleton, _)).unzip
-    Substitution.union(rippleSubs) match {
-      case None =>
-        throw new SubstitutionsNonUnifiableError(s"$skeleton dive $goal")
-      case Some(unifiedSubs) =>
-        (goal.withImmediateSubterms(rippledGoalSubterms), unifiedSubs)
-    }
+  final private def dive(env: Env, skeleton: Term, goal: Term): (IList[Term], Term, Substitution) = {
+    val (rippledSkeletons, rippledGoalSubterms, rippleSubs) = goal.immediateSubterms.map(ripple(env, skeleton, _)).unzip3
+    val divedSub = Substitution.unionDisjoint(rippleSubs)
+    val divedSkeletons = rippledSkeletons.concatenate
+    val divedGoal = goal.withImmediateSubterms(rippledGoalSubterms)
+    (divedSkeletons, divedGoal, divedSub)
   }
 
-  final def mergeRipples(ripples: IMap[Name, (Term, Substitution)]): (Substitution, Substitution) =
-    Substitution.union(ripples.values.map(_._2).toIList) match {
-      case None =>
-        throw new SubstitutionsNonUnifiableError(s"$ripples")
-      case Some(mergedGenSub) =>
-        val mergedCtxSub = Substitution.fromMap(ripples.map(_._1))
-        (mergedCtxSub, mergedGenSub)
-    }
-
-  final def couple(env: Env, skeleton: Term, goal: Term): (Term, Substitution) = {
-    val (ctx, skelSub, goalSub) = skeleton ᴨ goal
-    val rippled: IMap[Name, (Term, Substitution)] =
-      skelSub.toMap.intersectionWith(goalSub.toMap)(ripple(env, _, _))
-    val (mergedCtxSub, mergedGenSub) = mergeRipples(rippled)
-    // Simplifying assumption because I'm too hungover to figure out the general case
-    mergedCtxSub.boundVars.toList match {
-      case Seq(ctxVar) =>
-        val newSkeletons = mergedGenSub.boundVars.map(x => ctx :/ Var(x) / ctxVar)
-        val (critiquedCtx, critiquedSub) = critique(env, newSkeletons, ctx :/ mergedCtxSub)
-        val fullSub = (mergedGenSub ++ critiquedSub).getOrElse {
-          throw new SubstitutionsNonUnifiableError(s"$skeleton ++ $goal")
-        }
-        (critiquedCtx, fullSub)
-      case _ =>
-        (ctx :/ mergedCtxSub, mergedGenSub)
-    }
-  }
-
-  // TODO potential optimisation: entire process could fail when critique fails
-  def critique(env: Env, skeletons: ISet[Term], goal: Term): (Term, Substitution) = {
-    if (skeletons.isEmpty || skeletons.size == 1 && skeletons.toList.head =@= goal) {
-      val genVar = Name.fresh("χ")
-      (Var(genVar), goal / genVar)
-    } else {
-      lazy val failure = (goal, Substitution.empty)
-      if (env.alreadySeen(goal))
-        failure
-      else {
-        supercompile(goal) match {
-          case AppView(goalFun: Fix, goalArgs) =>
-            goalFun.fissionConstructorContext match {
-              case Some((fissionedCtx, fissionedFix)) =>
-                val newGoal = fissionedFix.apply(goalArgs)
-                val (critiquedGoal, critiquedSub) = critique(env.havingSeen(goal), skeletons, newGoal)
-                (fissionedCtx.apply(critiquedGoal), critiquedSub)
-              case None =>
-                failure
-            }
-          case _ =>
-            failure
-        }
-      }
-    }
-  }
-
-  def ripple(skeleton: Term, goal: Term): (Term, Substitution) =
+  def ripple(skeleton: Term, goal: Term): (IList[Term], Term, Substitution) =
     ripple(Env.empty, skeleton, goal)
 
-  def ripple(env: Env, skeleton: Term, goal: Term): (Term, Substitution) =
-    if (!couplesWith(skeleton, goal))
-      dive(env, skeleton, goal)
-    else
-      couple(env, skeleton, goal)
+  def ripple(env: Env, skeleton: Term, goal: Term): (IList[Term], Term, Substitution) =
+    (skeleton, goal) match {
+      case (skeleton: Var, goal: Var) =>
+        (IList(skeleton), skeleton, goal / skeleton.name)
+      case (AppView(skelFix: Fix, skelArgs: IList[Term]), AppView(goalFix: Fix, goalArgs: IList[Term]))
+          if skelArgs.length == goalArgs.length && skelFix.index == goalFix.index =>
+        val (rippledArgSkeletons: IList[IList[Term]], rippledArgGoals: IList[Term], rippledArgSubs: IList[Substitution]) =
+          skelArgs.fzipWith(goalArgs)(ripple(env, _, _)).unzip3
+        val rippledSkeletons: IList[Term] = (rippledArgSkeletons.sequence: IList[IList[Term]]).map { args => skelFix.apply(args) }
+        val rippledGoal = goalFix.apply(rippledArgGoals)
+        val rippleSub = Substitution.unionDisjoint(rippledArgSubs)
+        val (critiquedSkeletons, critiquedGoal, critiqueSub) = critique(env, rippledSkeletons, rippledGoal)
+        (critiquedSkeletons, critiquedGoal, rippleSub ++! critiqueSub)
+      case _ =>
+        dive(env, skeleton, goal)
+    }
+//
+//  final def mergeRipples(ripples: IMap[Name, (Term, Substitution)]): (Substitution, Substitution) =
+//    Substitution.union(ripples.values.map(_._2).toIList) match {
+//      case None =>
+//        throw new SubstitutionsNonUnifiableError(s"$ripples")
+//      case Some(mergedGenSub) =>
+//        val mergedCtxSub = Substitution.fromMap(ripples.map(_._1))
+//        (mergedCtxSub, mergedGenSub)
+//    }
+
+//  final def couple(env: Env, skeleton: Term, goal: Term): (IList[Term], Term, Substitution) = {
+//    val (ctx, skelSub, goalSub) = skeleton ᴨ goal
+//    val rippled: IMap[Name, (Term, Substitution)] =
+//      skelSub.toMap.intersectionWith(goalSub.toMap)(ripple(env, _, _))
+//    val (mergedCtxSub, mergedGenSub) = mergeRipples(rippled)
+//    // Simplifying assumption because I'm too hungover to figure out the general case
+//    mergedCtxSub.boundVars.toList match {
+//      case Seq(ctxVar) =>
+//        val newSkeletons = mergedGenSub.boundVars.map(x => ctx :/ Var(x) / ctxVar)
+//        val (critiquedCtx, critiquedSub) = critique(env, newSkeletons, ctx :/ mergedCtxSub)
+//        val fullSub = (mergedGenSub ++ critiquedSub).getOrElse {
+//          throw new SubstitutionsNonUnifiableError(s"$skeleton ++ $goal")
+//        }
+//        (critiquedCtx, fullSub)
+//      case _ =>
+//        (ctx :/ mergedCtxSub, mergedGenSub)
+//    }
+//  }
+
+  // TODO potential optimisation: entire process could fail when critique fails
+  def critique(env: Env, skeletons: IList[Term], goal: Term): (IList[Term], Term, Substitution) = {
+    if (skeletons.isEmpty || skeletons.length == 1 && skeletons.toList.head =@= goal) {
+      val genVar = Name.fresh("χ")
+      (IList(Var(genVar)), Var(genVar), goal / genVar)
+    } else {
+      lazy val failure = (skeletons, goal, Substitution.empty)
+      failure
+//      if (env.alreadySeen(goal))
+//        failure
+//      else {
+//        supercompile(env, goal) match {
+//          case AppView(goalFun: Fix, goalArgs) =>
+//            goalFun.fissionConstructorContext match {
+//              case Some((fissionedCtx, fissionedFix)) =>
+//                val newGoal = fissionedFix.apply(goalArgs)
+//                val (critiquedGoal, critiquedSub) = critique(env.havingSeen(goal), skeletons, newGoal)
+//                (fissionedCtx.apply(critiquedGoal), critiquedSub)
+//              case None =>
+//                failure
+//            }
+//          case _ =>
+//            failure
+//        }
+//      }
+    }
+  }
 
   final def supercompile(term: Term): Term =
     supercompile(Env.empty, term)
@@ -132,8 +130,13 @@ class Supercompiler {
               }
             case Some(fold) =>
               // We've found a matching critical path, so it's time to ripple
-              val (rippledTerm, rippleSub) = ripple(env, fold.from, term)
-              rippledTerm :/ rippleSub
+              val (rippledSkeletons, rippledGoal, rippleSub) = ripple(env, fold.from, term)
+              val successfulRipples = rippledSkeletons
+                .filter(_.isInstanceOf[Var])
+                .map(_ :/ rippleSub)
+                .map(fold.from.unifyLeft)
+                .map(_.getOrElse { throw new AssertionError("Successful ripple was not unifiable with original skeleton")})
+              successfulRipples.foldLeft(rippledGoal :/ rippleSub)((goal, sub) => goal replace (fold.from :/ sub, fold.to :/ sub))
           }
         }
       case AppView(fun, args) if args.nonEmpty =>

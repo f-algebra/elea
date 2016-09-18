@@ -41,18 +41,18 @@ class SupercompilerTest extends TestConfig {
     .filterKeys(_.startsWith("prop"))
     .foreach { case (propName, propTerm) =>
       it should s"prove $propName in test_properties.hover" in {
-        supercompiler.supercompile(propTerm) shouldEqual Truth
+        supercompiler.supercompile(propTerm) shouldEqual Logic.Truth
       }
     }
 
-  // All properties in false_test_properties.hover should fail
+  // All properties in unprovable_test_properties.hover should fail
   Program
     .prelude
-    .loadURL(getClass.getResource("false_test_properties.hover")).definitions
+    .loadURL(getClass.getResource("unprovable_test_properties.hover")).definitions
     .filterKeys(_.startsWith("prop"))
     .foreach { case (propName, propTerm) =>
-      it should s"fail to prove $propName in false_test_properties.hover" in {
-        supercompiler.supercompile(propTerm) should not equal Truth
+      it should s"fail to prove $propName in unprovable_test_properties.hover" in {
+        supercompiler.supercompile(propTerm) should not equal Logic.Truth
       }
     }
 }

@@ -23,6 +23,15 @@ case class ConstructorDef(constr: Constructor) extends Statement {
 
 object Parser {
 
+  private sealed trait BinOp
+
+  private object BinOp {
+
+    case object Leq extends BinOp
+
+    case object Eq extends BinOp
+  }
+
   private class Rules(program: Program) {
     import fastparse.WhitespaceApi
     import fastparse.noApi._
@@ -57,9 +66,15 @@ object Parser {
     val lam: P[Term] = P("fn" ~/ varName.rep(1) ~ "->" ~/ term).map(m => Lam(IList(m._1 : _*), m._2))
     val app: P[Term] = P(simpleTerm ~ simpleTerm.rep).map(m => m._1(m._2 : _*))
     val bot: P[Term] = P("_|_" | "⊥").map(_ => Bot)
-    val leq: P[Leq] = P(app ~ "=<" ~/ term).map(m => Leq(m._1, m._2))
+    val binOp: P[BinOp] = P("=<").map(_ => BinOp.Leq) | P("==").map(_ => BinOp.Eq)
+    val prop: P[Term] = P(app ~ binOp ~/ term).map { m =>
+      m._2 match {
+        case BinOp.Leq => Leq(m._1, m._3)
+        case BinOp.Eq => Logic.equality(m._1, m._3)
+      }
+    }
     val caseOf: P[Case] = P("case" ~/ caseIndex ~ term ~ branch.rep(1) ~ "end" ~/).map(m => Case(m._2, IList(m._3 : _*).toNel.get, m._1))
-    val term: P[Term] = P(NoCut(leq) | fix | lam | app | caseOf | unfold)
+    val term: P[Term] = P(NoCut(prop) | fix | lam | app | caseOf | unfold)
 
     val pattern: P[Pattern] = P(definedTerm ~ varName.rep).map(m => Pattern(m._1.asInstanceOf[Constructor], IList(m._2 : _*)))
 

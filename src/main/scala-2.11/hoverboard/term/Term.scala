@@ -145,4 +145,6 @@ abstract class Term extends TermLike[Term] {
     * Unfolds the outermost fixed-point of this term, if one exists.
     */
   def unfold: Term = this
+
+  def =<(other: Term): Leq = Leq(this, other)
 }

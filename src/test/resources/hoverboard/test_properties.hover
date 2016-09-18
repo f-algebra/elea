@@ -14,6 +14,10 @@ let prop_revSnoc =
 let prop_rev_self_inverse =
     .rev (.rev xs) =< xs ;
 
-let prop_take_drop =
+
+let prop_zeno1 =
     .app (.take n xs) (.drop n xs) =< xs ;
+
+let prop_zeno2 =
+    .add (.count n xs) (.count n ys) =< .count n (.app xs ys) ;
 

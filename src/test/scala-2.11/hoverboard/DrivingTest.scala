@@ -2,6 +2,10 @@ package hoverboard
 
 import hoverboard.term._
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
+
 class DrivingTest extends TestConfig {
 
   import Util._
@@ -99,5 +103,20 @@ class DrivingTest extends TestConfig {
   it should "float pattern matching out of the left hand side of =<" in {
     term"(case x | .0 -> y end) =< z".drive shouldEqual term"case x | .0 -> y =< z end"
     term"(case x | .0 -> .add y z end) =< .add x (.add y z)".drive shouldEqual ⊥
+  }
+
+  it should "not beta-reduce forever" in {
+    val test = Future {
+      term"(fn x -> x x) (fn x -> x x)".drive shouldEqual term"(fn x -> x x) (fn x -> x x)"
+    }
+    Await.result(test, 100 milliseconds)
+  }
+
+  it should "apply pattern matches as rewrites" in {
+    term"case .eq x y | .True -> case .eq x y | .True -> x | .False -> y end end".drive shouldEqual
+      term"case .eq x y | .True -> x end"
+
+    term"case .rev xs | .Cons y ys -> case ys | .Cons z zs -> .rev xs end end".drive shouldEqual
+      term"case .rev xs | .Cons y ys -> case ys | .Cons z zs -> .Cons y (.Cons z zs) end end"
   }
 }

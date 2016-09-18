@@ -15,11 +15,11 @@ case class Leq(smallerTerm: Term, largerTerm: Term)
 
   override def driveHead(env: Env): Term =
     if (smallerTerm == Bot)
-      Truth
-    else if (largerTerm == Falsity)
-      Truth
+      Logic.Truth
+    else if (largerTerm == Logic.Falsity)
+      Logic.Truth
     else if (smallerTerm =@= largerTerm)
-      Truth
+      Logic.Truth
     else smallerTerm match {
       case smallerTerm: Case =>
         C(x => Leq(Var(x), largerTerm))

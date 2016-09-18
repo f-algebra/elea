@@ -8,8 +8,6 @@ package object term {
   import Fix._
   import Ordering._
 
-  val Truth: Term = Bot
-  val Falsity: Term = Constructor("ff", argumentCount = 0, recursiveArgs = ISet.empty)
   val ⊥ = Bot
 
   implicit def termLikeOrder[T <: TermLike[T]]: Order[T] =

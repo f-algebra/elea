@@ -43,6 +43,20 @@ let lteq = fix lteq x y ->
         end
     end ;
 
+let eq = fix eq x y ->
+    case x
+    | .0 ->
+        case y
+        | .0 -> .True
+        | .Suc y' -> .False
+        end
+    | .Suc x' ->
+        case y
+        | .0 -> .False
+        | .Suc y' -> eq x' y'
+        end
+    end ;
+
 let app = fix app xs ys ->
     case[app] xs
     | .Nil -> ys
@@ -66,6 +80,16 @@ let drop = fix drop n xs ->
         case xs
         | .Nil -> .Nil
         | .Cons x xs' -> drop n' xs'
+        end
+    end ;
+
+let count = fix count n xs ->
+    case xs
+    | .Nil -> .0
+    | .Cons x xs' ->
+        case .eq n x
+        | .True -> .Suc (count n xs')
+        | .False -> count n xs'
         end
     end ;
 

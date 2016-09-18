@@ -18,6 +18,8 @@ let prop_rev_self_inverse =
 let prop_zeno1 =
     .app (.take n xs) (.drop n xs) =< xs ;
 
-let prop_zeno2 =
+let prop_zeno2a =
     .add (.count n xs) (.count n ys) =< .count n (.app xs ys) ;
 
+let prop_zeno2b =
+    .count n (.app xs ys) =< .add (.count n xs) (.count n ys) ;

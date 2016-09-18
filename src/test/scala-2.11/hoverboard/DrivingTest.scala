@@ -79,6 +79,9 @@ class DrivingTest extends TestConfig {
     term".add (.Suc x) y".drive shouldEqual term".Suc (.add x y)".drive
     term".rev (.Cons x xs)".drive shouldEqual term".app (.rev xs) (.Cons x .Nil)".drive
     term".add .0 (.add x y)".drive shouldEqual term".add x y".drive
+
+    term".count n (.Cons x xs)".drive shouldEqual
+      term"case .eq n x | .True -> .Suc (.count n xs) | .False -> .count n xs end"
   }
 
   it should "not unfold fixed points with constructor arguments dangerously" in {
@@ -118,5 +121,19 @@ class DrivingTest extends TestConfig {
 
     term"case .rev xs | .Cons y ys -> case ys | .Cons z zs -> .rev xs end end".drive shouldEqual
       term"case .rev xs | .Cons y ys -> case ys | .Cons z zs -> .Cons y (.Cons z zs) end end"
+  }
+
+  it should "perform logical reduction" in {
+    term"true || p".drive shouldEqual term"true"
+    term"p || true".drive shouldEqual term"true"
+    term"false || p".drive shouldEqual term"p"
+    term"p || false".drive shouldEqual term"p"
+
+    term"false && p".drive shouldEqual term"false"
+    term"p && false".drive shouldEqual term"false"
+    term"p && true".drive shouldEqual term"p"
+    term"true && p".drive shouldEqual term"p"
+
+    term"not (not p)".drive shouldEqual term"p"
   }
 }

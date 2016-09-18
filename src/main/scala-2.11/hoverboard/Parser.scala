@@ -28,8 +28,9 @@ object Parser {
   private object BinOp {
 
     case object Leq extends BinOp
-
     case object Eq extends BinOp
+    case object And extends BinOp
+    case object Or extends BinOp
   }
 
   private class Rules(program: Program) {
@@ -42,7 +43,7 @@ object Parser {
     }
     import White._
 
-    val keywords = Set("fix", "fn", "case", "of", "else", "let", "end", "unfold")
+    val keywords = Set("fix", "fn", "case", "of", "else", "let", "end", "unfold", "false", "true", "not")
 
     val lowercase = P(CharIn('a' to 'z') | CharIn(Seq('_', 'α')))
     val uppercase = P(CharIn('A' to 'Z') | CharIn('0' to '9') | CharIn(Seq('\'')))
@@ -59,22 +60,31 @@ object Parser {
     val caseIndex: P[Case.Index] = P(("[" ~ varName ~ "]").?).map(_.map(Case.Index).getOrElse(Case.freshIndex))
 
     val termVar: P[Term] = P(varName).map(Var)
-    val simpleTerm: P[Term] = P(bot | unfold | termVar | definedTerm | "(" ~ term ~ ")")
+    val simpleTerm: P[Term] = P(truth | falsity | bot | unfold | termVar | definedTerm | "(" ~ term ~ ")")
     val unfold: P[Term] = P("unfold" ~/ definedTerm).map(_.unfold)
     val fix: P[Fix] = P("fix" ~/ fixIndex.? ~ varName.rep(1) ~ "->" ~/ term)
       .map(m => Fix(Lam(IList(m._2 : _*).toNel.get, m._3), m._1.map(Fix.finite).getOrElse(Fix.freshOmegaIndex)))
     val lam: P[Term] = P("fn" ~/ varName.rep(1) ~ "->" ~/ term).map(m => Lam(IList(m._1 : _*), m._2))
     val app: P[Term] = P(simpleTerm ~ simpleTerm.rep).map(m => m._1(m._2 : _*))
-    val bot: P[Term] = P("_|_" | "⊥").map(_ => Bot)
-    val binOp: P[BinOp] = P("=<").map(_ => BinOp.Leq) | P("==").map(_ => BinOp.Eq)
+    val bot: P[Term] = P(("_|_" | "⊥") ~/).map(_ => Bot)
+    val truth: P[Term] = P("true" ~/).map(_ => Logic.Truth)
+    val falsity: P[Term] = P("false" ~/).map(_ => Logic.Falsity)
+    val negation: P[Term] = P("not" ~/ term).map(Logic.not)
+    val binOp: P[BinOp] =
+      P("=<").map(_ => BinOp.Leq) |
+        P("==").map(_ => BinOp.Eq) |
+        P("&&").map(_ => BinOp.And) |
+        P("||").map(_ => BinOp.Or)
     val prop: P[Term] = P(app ~ binOp ~/ term).map { m =>
       m._2 match {
         case BinOp.Leq => Leq(m._1, m._3)
         case BinOp.Eq => Logic.equality(m._1, m._3)
+        case BinOp.And => Logic.and(m._1, m._3)
+        case BinOp.Or => Logic.or(m._1, m._3)
       }
     }
     val caseOf: P[Case] = P("case" ~/ caseIndex ~ term ~ branch.rep(1) ~ "end" ~/).map(m => Case(m._2, IList(m._3 : _*).toNel.get, m._1))
-    val term: P[Term] = P(NoCut(prop) | fix | lam | app | caseOf | unfold)
+    val term: P[Term] = P(NoCut(prop) | negation | fix | lam | app | caseOf)
 
     val pattern: P[Pattern] = P(definedTerm ~ varName.rep).map(m => Pattern(m._1.asInstanceOf[Constructor], IList(m._2 : _*)))
 

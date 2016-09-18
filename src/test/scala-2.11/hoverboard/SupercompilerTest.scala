@@ -34,6 +34,10 @@ class SupercompilerTest extends TestConfig {
       term"fn ys -> .Cons n ys")
   }
 
+  it should "BLEH" in {
+    supercompile(term".count n (.app xs ys)")
+  }
+
   // All properties in test_properties.hover should pass
   Program
     .prelude
@@ -41,7 +45,7 @@ class SupercompilerTest extends TestConfig {
     .filterKeys(_.startsWith("prop"))
     .foreach { case (propName, propTerm) =>
       it should s"prove $propName in test_properties.hover" in {
-        supercompiler.supercompile(propTerm) shouldEqual Logic.Truth
+        supercompile(propTerm) shouldEqual Logic.Truth
       }
     }
 
@@ -52,7 +56,7 @@ class SupercompilerTest extends TestConfig {
     .filterKeys(_.startsWith("prop"))
     .foreach { case (propName, propTerm) =>
       it should s"fail to prove $propName in unprovable_test_properties.hover" in {
-        supercompiler.supercompile(propTerm) should not equal Logic.Truth
+        supercompile(propTerm) should not equal Logic.Truth
       }
     }
 }

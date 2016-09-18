@@ -25,6 +25,22 @@ case class Leq(smallerTerm: Term, largerTerm: Term)
         C(x => Leq(Var(x), largerTerm))
           .applyToBranches(smallerTerm)
           .driveIgnoringMatchedTerm(env)
+      case AppView(smallerConFun: Constructor, smallerConArgs) =>
+        if (largerTerm == Bot)
+          Logic.Falsity
+        else largerTerm match {
+          case AppView(largerConFun: Constructor, largerConArgs) =>
+            if (largerConFun.name != smallerConFun.name)
+              Logic.Falsity
+            else
+              Logic.and(smallerConArgs.fzipWith(largerConArgs)(Leq))
+                .drive(env)
+          case Leq(ff, prop) if ff == Logic.Falsity && smallerConFun == Logic.Falsity =>
+            // Double negation elimination
+            prop
+          case _ =>
+            this
+        }
       case _ =>
         this
     }

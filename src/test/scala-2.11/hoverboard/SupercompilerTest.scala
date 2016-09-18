@@ -11,7 +11,6 @@ class SupercompilerTest extends TestConfig {
 
   def testRipple(skeleton: Term, goal: Term, context: Term): Unit = {
     val (rippledSkeletons, rippledGoal, rippleSub) = ripple(skeleton.drive, goal.drive)
-    rippledGoal :/ rippleSub shouldEqual goal.drive
     rippledSkeletons.toList.foreach(_ shouldBe a [Var])
     context.apply(rippledSkeletons).drive shouldEqual rippledGoal
   }
@@ -28,13 +27,12 @@ class SupercompilerTest extends TestConfig {
       term"fn xs -> .app xs (.Cons x .Nil)")
   }
 
-//  it should "work for examples requiring constructor fission" in {
-//    testRipple(
-//      term".rev (.rev xs)",
-//      term".rev (.snoc n (.rev xs2))",
-//      C(x => term".Cons n ${Var(x)}"),
-//      term".rev (.rev xs2)")
-//  }
+  it should "work for examples requiring constructor fission" in {
+    testRipple(
+      term".rev (.rev xs)",
+      term".rev (.snoc n (.rev xs2))",
+      term"fn ys -> .Cons n ys")
+  }
 
 //  "critiquing" should "work for examples requiring constructor fission" in {
 //    import supercompiler.testCritique

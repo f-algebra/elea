@@ -76,24 +76,23 @@ class Supercompiler {
       (IList(Var(genVar)), Var(genVar), goal / genVar)
     } else {
       lazy val failure = (skeletons, goal, Substitution.empty)
-      failure
-//      if (env.alreadySeen(goal))
-//        failure
-//      else {
-//        supercompile(env, goal) match {
-//          case AppView(goalFun: Fix, goalArgs) =>
-//            goalFun.fissionConstructorContext match {
-//              case Some((fissionedCtx, fissionedFix)) =>
-//                val newGoal = fissionedFix.apply(goalArgs)
-//                val (critiquedGoal, critiquedSub) = critique(env.havingSeen(goal), skeletons, newGoal)
-//                (fissionedCtx.apply(critiquedGoal), critiquedSub)
-//              case None =>
-//                failure
-//            }
-//          case _ =>
-//            failure
-//        }
-//      }
+      if (env.alreadySeen(goal))
+        failure
+      else {
+        supercompile(env, goal) match {
+          case AppView(goalFun: Fix, goalArgs) =>
+            goalFun.fissionConstructorContext match {
+              case Some((fissionedCtx, fissionedFix)) =>
+                val newGoal = fissionedFix.apply(goalArgs)
+                val (critiquedSkels, critiquedGoal, critiqueSub) = critique(env.havingSeen(goal), skeletons, newGoal)
+                (critiquedSkels, fissionedCtx.apply(critiquedGoal), critiqueSub)
+              case None =>
+                failure
+            }
+          case _ =>
+            failure
+        }
+      }
     }
   }
 

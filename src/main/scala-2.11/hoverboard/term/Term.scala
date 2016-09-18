@@ -117,33 +117,6 @@ abstract class Term extends TermLike[Term] {
   final def strictlyEmbedsInto(other: Term): Boolean =
     this.embedsInto(other) && !other.embedsInto(this)
 
-  final def mostSpecificGeneralisation(other: Term): (Term, Substitution, Substitution) =
-    this ᴨ other
-
-  final def ᴨ(other: Term): (Term, Substitution, Substitution) =
-    uzipWith(other)(_ ᴨ _) match {
-      case None =>
-        val newVar = Name.fresh("γ")
-        (Var(newVar), this / newVar, other / newVar)
-      case Some(msgs) =>
-        val (subterms, thisSubs, otherSubs) = msgs.unzip3
-        // If these unions fail then the fresh variable creator is broken
-        // since all of these substitutions should have disjoint domains
-        val Some(thisSub) = Substitution.union(thisSubs)
-        val Some(otherSub) = Substitution.union(otherSubs)
-        val newCtx = this.withImmediateSubterms(subterms)
-        val mergeable = !thisSubs.isEmpty && subterms.all {
-          case Var(n) => thisSub.boundVars.contains(n)
-          case _ => false
-        }
-        if (mergeable) {
-          val newVar = Name.fresh("γ")
-          (Var(newVar), (newCtx :/ thisSub) / newVar, (newCtx :/ otherSub) / newVar)
-        } else {
-          (newCtx, thisSub, otherSub)
-        }
-    }
-
   /**
     * Replace occurrences (modulo alpha-equality) of `from` with `to` in this term and all its sub-terms
     */

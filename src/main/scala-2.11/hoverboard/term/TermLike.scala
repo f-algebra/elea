@@ -169,10 +169,4 @@ abstract class TermLike[This <: TermLike[This]] {
     * Replace all [[Case.Index]] and [[Fix.Index]] with fresh ones. Used after reading a term definition.
     */
   def freshenIndices: This = mapImmediateSubterms(_.freshenIndices)
-
-  /**
-    * The syntactic signature of a term is the list of the case indices it contains, excluding those of any fixed-points
-    */
-  lazy val signature: IList[Case.Index] =
-    immediateSubterms.flatMap(_.signature)
 }

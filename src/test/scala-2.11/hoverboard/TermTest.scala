@@ -189,30 +189,6 @@ class TermTest extends TestConfig {
     term".lt".asInstanceOf[Fix].strictArgIndices shouldEqual IList(0, 1)
   }
 
-  // MSG doesn't play well with variable capture, time for a new approach!
-//  def checkedMsg(t1: Term, t2: Term): (Term, Substitution, Substitution) = {
-//    val (ctx, sub1, sub2) = t1 ᴨ t2
-//    ctx :/ sub1 shouldEqual t1
-//    ctx :/ sub2 shouldEqual t2
-//    sub1.toMap.keySet shouldEqual sub2.toMap.keySet
-//    (ctx, sub1, sub2)
-//  }
-//
-//  "most specific generalisation" should "do nothing for equal terms" in {
-//    forAll { (t: Term) =>
-//      val (ctx, sub1, sub2) = checkedMsg(t.freshen, t)
-//      sub1.isEmpty shouldBe true
-//      sub2.isEmpty shouldBe true
-//      ctx shouldEqual t
-//    }
-//  }
-//g
-//  it should "work for rev-snoc" in {
-//    val (ctx, leftSub, rightSub) = checkedMsg(term".rev (.snoc n (.rev xs))".drive, term".rev (.rev xs2)".drive)
-//    leftSub.boundVars.size shouldBe 1
-//    ctx :/ Var("ys") / leftSub.boundVars.toList.head shouldEqual term".rev ys".drive
-//  }
-
   "replace" should "reverse substitution" in {
     forAll { (t1: Term, t2: Term) =>
       whenever(!t1.subtermSet.contains(t2)) {

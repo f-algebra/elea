@@ -1,0 +1,8 @@
+
+let prop_cons_mismatch = .0 =< .Nil ;
+
+let prop_var_mismatch = x =< y ;
+
+let prop_var_leq_cons = x =< .0 ;
+
+let prop_cons_leq_var = .0 =< x ;

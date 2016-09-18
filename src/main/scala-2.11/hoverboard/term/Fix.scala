@@ -233,8 +233,6 @@ case class Fix(body: Term,
       freeVars.intersection(ISet.unions(args.map(_.freeVars).toList)).isEmpty
 
   override def freshenIndices: Fix = copy(index = index.freshen)
-
-  override lazy val signature: IList[Case.Index] = IList.empty
 }
 
 object Fix {

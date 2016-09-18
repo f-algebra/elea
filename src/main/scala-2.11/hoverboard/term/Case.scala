@@ -118,8 +118,6 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
     copy(branches = branches.map(_.freshen))
 
   override def freshenIndices: Case = copy(index = Case.freshIndex)
-
-  override lazy val signature: IList[Case.Index] = index +: branches.list.flatMap(_.signature)
 }
 
 object Case {

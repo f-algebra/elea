@@ -49,6 +49,26 @@ let app = fix app xs ys ->
     | .Cons x xs' -> .Cons x (app xs' ys)
     end ;
 
+let take = fix take n xs ->
+    case n
+    | .0 -> .Nil
+    | .Suc n' ->
+        case xs
+        | .Nil -> .Nil
+        | .Cons x xs' -> .Cons x (take n' xs')
+        end
+    end ;
+
+let drop = fix drop n xs ->
+    case n
+    | .0 -> xs
+    | .Suc n' ->
+        case xs
+        | .Nil -> .Nil
+        | .Cons x xs' -> drop n' xs'
+        end
+    end ;
+
 let snoc = fn y -> fix snoc xs ->
     case[snoc] xs
     | .Nil -> .Cons y .Nil

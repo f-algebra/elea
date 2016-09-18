@@ -34,35 +34,25 @@ class SupercompilerTest extends TestConfig {
       term"fn ys -> .Cons n ys")
   }
 
-//  "critiquing" should "work for examples requiring constructor fission" in {
-//    import supercompiler.testCritique
-//
-//    val (revTerm, revSub) = testCritique(ISet.fromList(List(term".rev xs")), term".rev (.snoc n xs)")
-//    revSub.boundVars.size shouldBe 1
-//    revTerm shouldEqual term".Cons n ${revSub.boundVars.toList.head}"
-//  }
-
-  "supercompilation" should "work for simple examples" in {
-    supercompile(term".add x y") shouldEqual term".add x y".drive
-    supercompile(term".add (.add x y) z") shouldEqual term".add x (.add y z)".drive
-    supercompile(term".rev (.app xs (.Cons y .Nil))") shouldEqual term".revSnoc y xs".drive
-  }
-
+  // All properties in test_properties.hover should pass
   Program
     .prelude
-    .loadURL(getClass.getResource("test.hover")).definitions
+    .loadURL(getClass.getResource("test_properties.hover")).definitions
     .filterKeys(_.startsWith("prop"))
     .foreach { case (propName, propTerm) =>
-      it should s"prove $propName in test.hover" in {
-        val name = propName
+      it should s"prove $propName in test_properties.hover" in {
         supercompiler.supercompile(propTerm) shouldEqual Truth
       }
     }
 
-//  "critiquing" should "be able to fission out constructor contexts" in {
-//    val supercompiler = new Supercompiler with NoSupercompile with NoRipple with TestAssertions
-//    supercompiler.assertSuccesfulCritique(ISet.fromList(List(t"Reverse ys")), t"ReverseSnoc ys y")
-//  //  rippleWithSuccessCheck(t"Reverse (Reverse xs)", t"Reverse (Append (Reverse ys) (Cons n Nil))")
-//    // rippleWithSuccessCheck(t"IsSorted (Flatten t)", t"IsSorted (Append (Flatten t1) (Cons n (Flatten t2)))")
-//  }
+  // All properties in false_test_properties.hover should fail
+  Program
+    .prelude
+    .loadURL(getClass.getResource("false_test_properties.hover")).definitions
+    .filterKeys(_.startsWith("prop"))
+    .foreach { case (propName, propTerm) =>
+      it should s"fail to prove $propName in false_test_properties.hover" in {
+        supercompiler.supercompile(propTerm) should not equal Truth
+      }
+    }
 }

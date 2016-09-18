@@ -13,3 +13,7 @@ let prop_revSnoc =
 
 let prop_rev_self_inverse =
     .rev (.rev xs) =< xs ;
+
+let prop_take_drop =
+    .app (.take n xs) (.drop n xs) =< xs ;
+

@@ -12,7 +12,7 @@ object Logic {
     and(leftTerm =< rightTerm, rightTerm =< leftTerm)
 
   def or(leftTerm: Term, rightTerm: Term): Term =
-    Case(leftTerm, NonEmptyList(PatternBranch(Pattern(Falsity, IList.empty), rightTerm)), Case.freshIndex)
+    Case(leftTerm, NonEmptyList(PatternBranch(Pattern(Falsity, IList.empty), rightTerm)), Case.Index.fresh)
 
   def not(propTerm: Term): Term =
     Falsity =< propTerm

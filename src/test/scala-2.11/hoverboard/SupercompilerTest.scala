@@ -34,10 +34,6 @@ class SupercompilerTest extends TestConfig {
       term"fn ys -> .Cons n ys")
   }
 
-  it should "BLEH" in {
-    supercompile(term".count n (.app xs ys)")
-  }
-
   // All properties in test_properties.hover should pass
   Program
     .prelude

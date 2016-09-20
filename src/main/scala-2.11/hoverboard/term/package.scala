@@ -16,5 +16,5 @@ package object term {
   implicit val patternOrder: Order[Pattern] =
     Order.orderBy((x: Pattern) => (x.constructor.name, x.bindings))
 
-  implicit def stringToCaseIndex(name: String): Case.Index = Case.Index(Name(name))
+  implicit def stringToCaseIndex(name: String): Case.Index = Case.Index.fromName(Name(name))
 }

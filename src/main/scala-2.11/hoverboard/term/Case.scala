@@ -117,13 +117,23 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
   override def freshen =
     copy(branches = branches.map(_.freshen))
 
-  override def freshenIndices: Case = copy(index = Case.freshIndex)
+  override def freshenIndices: Case = copy(index = Case.Index.fresh)
 }
 
 object Case {
-  case class Index(name: Name) {
-    override def toString: String = name.toString
-  }
+  sealed trait Index
 
-  def freshIndex = Index(Name.fresh("κ"))
+  object Index {
+    def fromName(name: Name): Index = Named(name)
+
+    def fresh: Index = Named(Name.fresh("κ"))
+
+    case object Epsilon extends Index {
+      override def toString: String = "ϵ"
+    }
+
+    case class Named(name: Name) extends Index  {
+      override def toString: String = name.toString
+    }
+  }
 }

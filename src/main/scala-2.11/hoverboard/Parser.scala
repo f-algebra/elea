@@ -57,7 +57,7 @@ object Parser {
 
     val definedTerm: P[Term] = P("." ~~ definitionName ~/).map(n => program.definitionOf(n))
     val fixIndex: P[Name] = P("[" ~ varName ~ "]")
-    val caseIndex: P[Case.Index] = P(("[" ~ varName ~ "]").?).map(_.map(Case.Index).getOrElse(Case.freshIndex))
+    val caseIndex: P[Case.Index] = P(("[" ~ varName ~ "]").?).map(_.map(Case.Index.fromName).getOrElse(Case.Index.fresh))
 
     val termVar: P[Term] = P(varName).map(Var)
     val simpleTerm: P[Term] = P(truth | falsity | bot | unfold | termVar | definedTerm | "(" ~ term ~ ")")

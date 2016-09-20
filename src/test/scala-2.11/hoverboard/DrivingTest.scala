@@ -63,12 +63,10 @@ class DrivingTest extends TestConfig {
     historicalFails
       .foreach { t => t.drive shouldEqual t.drive.drive }
 
-    // This still occasionally fails for examples too large to debug...
-    // I think I can switch this check back on if I disable unfolding in the driving step.
-//    forAll { (t: Term) =>
-//      val driven = t.drive
-//      driven shouldEqual driven.drive
-//    }
+    forAll { (t: Term) =>
+      val driven = t.drive
+      driven shouldEqual driven.drive
+    }
   }
 
   it should "not simplify undriveable terms" in {
@@ -107,7 +105,7 @@ class DrivingTest extends TestConfig {
     term"(case x | .0 -> .add y z end) =< .add x (.add y z)".drive shouldEqual ⊥
   }
 
-  it should "not beta-reduce forever" in {g
+  it should "not beta-reduce forever" in {
     val test = Future {
       term"(fn x -> x x) (fn x -> x x)".drive shouldEqual term"(fn x -> x x) (fn x -> x x)"
     }

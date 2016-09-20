@@ -37,34 +37,40 @@ case class Fix(body: Term,
 
   // TODO filter on decreasing/strict args
   override def driveHeadApp(env: Env, args: NonEmptyList[Term]): Term = {
-    strictArgIndices.find(args.index(_).get.isInstanceOf[Case]) match {
-      case Some(caseIdx) =>
-        // If a pattern match is a strict argument to a fixed-point,
-        // we can float it out to be topmost
-        val caseArg = args.index(caseIdx).get.asInstanceOf[Case]
-        C(x => this.apply(args.list.setAt(caseIdx, Var(x))))
-          .applyToBranches(caseArg)
-          .driveIgnoringMatchedTerm(env)
-      case None =>
-        body match {
-          case body: Lam if args.any(t => t.leftmost.isInstanceOf[Constructor] || t == ⊥) =>
-            // If an argument to a fixed-point is a constructor or a ⊥, we can try to unfold
-            // the fixed-point
-            val originalTerm = App(this, args)
-            val driven = App(body.body, args).drive(env)
-            lazy val wasProductive = driven.subtermsContaining(ISet.singleton(body.binding)).all {
-              case term@App(Var(f), xs) if f == body.binding =>
-                term.strictlyEmbedsInto(App(Var(f), args))
-              case _ =>
-                true
-            }
-            if (!driven.isInstanceOf[Case] && wasProductive)
-              (driven :/ (this / body.binding)).drive(env.havingSeen(originalTerm))
-            else
+    if (strictArgs(args.list).any(_ == Bot)) {
+      Bot
+    } else {
+      strictArgIndices.find(args.index(_).get.isInstanceOf[Case]) match {
+        case Some(idx) =>
+          args.index(idx).get match {
+            // If a pattern match is a strict argument to a fixed-point,
+            // we can float it out to be topmost
+            case caseArg: Case =>
+              C(x => this.apply(args.list.setAt(idx, Var(x))))
+                .applyToBranches(caseArg)
+                .driveIgnoringMatchedTerm(env)
+          }
+        case None =>
+          body match {
+            case body: Lam if args.any(t => t.leftmost.isInstanceOf[Constructor] || t == ⊥) =>
+              // If an argument to a fixed-point is a constructor or a ⊥, we can try to unfold
+              // the fixed-point
+              val originalTerm = App(this, args)
+              val driven = App(body.body, args).drive(env)
+              lazy val wasProductive = driven.subtermsContaining(ISet.singleton(body.binding)).all {
+                case term@App(Var(f), xs) if f == body.binding =>
+                  term.strictlyEmbedsInto(App(Var(f), args))
+                case _ =>
+                  true
+              }
+              if (false && wasProductive)
+                (driven :/ (this / body.binding)).drive(env.havingSeen(originalTerm))
+              else
+                super.driveHeadApp(env, args)
+            case _ =>
               super.driveHeadApp(env, args)
-          case _ =>
-            super.driveHeadApp(env, args)
-        }
+          }
+      }
     }
   }
 

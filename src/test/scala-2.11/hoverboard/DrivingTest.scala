@@ -95,12 +95,11 @@ class DrivingTest extends TestConfig {
     forAll { (t: Term) => t.drive.indices.isSubsetOf(t.indices) shouldBe true }
   }
 
-  it should "rewrite fixed-points called with ⊥ as strict arguments to ⊥" in {
+  it should "rewrite fixed-points called with ⊥ as strict arguments" in {
     term".lt x ⊥".drive shouldEqual ⊥
     term".lt ⊥ x".drive shouldEqual ⊥
     term".add x ⊥".drive should not equal ⊥
-    term".add (.Suc ⊥) y".drive shouldEqual term".Suc ⊥"
-    term".isSorted (.Cons x ⊥)".drive shouldEqual ⊥
+    term".add ⊥ y".drive shouldEqual ⊥
   }
 
   it should "float pattern matching out of the left hand side of =<" in {
@@ -108,7 +107,7 @@ class DrivingTest extends TestConfig {
     term"(case x | .0 -> .add y z end) =< .add x (.add y z)".drive shouldEqual ⊥
   }
 
-  it should "not beta-reduce forever" in {
+  it should "not beta-reduce forever" in {g
     val test = Future {
       term"(fn x -> x x) (fn x -> x x)".drive shouldEqual term"(fn x -> x x) (fn x -> x x)"
     }

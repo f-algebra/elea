@@ -79,7 +79,7 @@ class DrivingTest extends TestConfig {
     term".add .0 (.add x y)".drive shouldEqual term".add x y".drive
 
     term".count n (.Cons x xs)".drive shouldEqual
-      term"case .eq n x | .True -> .Suc (.count n xs) | .False -> .count n xs end"
+      term"case .eq n x | .True -> .Suc (.count n xs) | .False -> .count n xs end".drive
   }
 
   it should "not unfold fixed points with constructor arguments dangerously" in {

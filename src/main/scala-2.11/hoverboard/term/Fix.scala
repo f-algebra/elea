@@ -57,13 +57,22 @@ case class Fix(body: Term,
               // the fixed-point
               val originalTerm = App(this, args)
               val driven = App(body.body, args).drive(env)
+
               lazy val wasProductive = driven.subtermsContaining(ISet.singleton(body.binding)).all {
                 case term@App(Var(f), xs) if f == body.binding =>
                   term.strictlyEmbedsInto(App(Var(f), args))
                 case _ =>
                   true
               }
-              if (false && wasProductive)
+
+              val isCaseOfSubterm =
+                driven match {
+                  case driven: Case =>
+                    args.any(arg => arg == driven.matchedTerm || arg.freeSubtermSet.contains(driven.matchedTerm))
+                  case _ => false
+                }
+
+              if (!isCaseOfSubterm && wasProductive)
                 (driven :/ (this / body.binding)).drive(env.havingSeen(originalTerm))
               else
                 super.driveHeadApp(env, args)

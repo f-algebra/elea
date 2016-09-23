@@ -24,10 +24,4 @@ class CriticalPairsTest extends TestConfig with TableDrivenPropertyChecks {
       cp.term shouldEqual criticalTerm.drive
     }
   }
-
-  they should "detect when a free unfolding is applicable" in {
-    val AppView(fix: Fix, args) = term".add (.add (.Suc (.add x y)) z) n".drive
-    val cp = CriticalPair.of(fix, args)
-    val meh = 5
-  }
 }

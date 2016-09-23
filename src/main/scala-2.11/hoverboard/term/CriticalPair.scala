@@ -32,8 +32,6 @@ object CriticalPair {
           .extendPath(term.index)
       case term: Case =>
         CriticalPair(IList(term.index), fix, args)
-      case AppView(newFix: Fix, newArgs) if newFix.index == fix.index =>
-        CriticalPair(IList(Case.Index.Epsilon), fix, args)
       case _ =>
         CriticalPair(IList.empty[Case.Index], fix, args)
     }

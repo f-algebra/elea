@@ -56,6 +56,17 @@ abstract class TermLike[This <: TermLike[This]] {
     visited
   }
 
+  lazy val freeSubterms: IList[Term] =
+    immediateSubtermsWithBindings.flatMap {
+      case (bindings, term) if bindings.isEmpty =>
+        term +: term.freeSubterms
+      case _ =>
+        IList.empty
+    }
+
+  lazy val freeSubtermSet: ISet[Term] =
+    ISet.fromFoldable(freeSubterms)
+
   /**
     * Map a function over the sub-terms directly contained in `This`. This function is
     * also provided the set of variables which have been captured by `This`.

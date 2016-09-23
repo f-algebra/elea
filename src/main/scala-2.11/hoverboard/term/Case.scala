@@ -128,10 +128,6 @@ object Case {
 
     def fresh: Index = Named(Name.fresh("κ"))
 
-    case object Epsilon extends Index {
-      override def toString: String = "ϵ"
-    }
-
     case class Named(name: Name) extends Index  {
       override def toString: String = name.toString
     }

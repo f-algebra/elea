@@ -1,4 +1,5 @@
 
+
 let prop_id_nat =
     (fix f x -> case x | .0 -> .0 | .Suc x' -> .Suc (f x') end) =< fn x -> x ;
 
@@ -18,8 +19,29 @@ let prop_rev_self_inverse =
 let prop_zeno1 =
     .app (.take n xs) (.drop n xs) =< xs ;
 
-let prop_zeno2a =
-    .add (.count n xs) (.count n ys) =< .count n (.app xs ys) ;
+let prop_zeno2 =
+    .add (.count n xs) (.count n ys) == .count n (.app xs ys) ;
 
-let prop_zeno2b =
-    .count n (.app xs ys) =< .add (.count n xs) (.count n ys) ;
+let prop_zeno3 =
+    .lteq (.count n xs) (.count n (.app xs ys)) =< .True ;
+
+let prop_zeno4 =
+    .count n (.Cons n xs) =< .Suc (.count n xs) ;
+
+let prop_zeno5 =
+    assert .True <- .eq n m in .Suc (.count n xs) == .count n (.Cons m xs) ;
+
+let prop_zeno6 =
+    .minus n (.add n m) =< .0 ;
+
+let prop_zeno7 =
+    .minus (.add n m) n =< m ;
+
+let prop_zeno8 =
+    .minus (.add k m) (.add k n) =< .minus m n ;
+
+let prop_zeno9 =
+    .minus (.minus n m) k =< .minus n (.add m k) ;
+
+let prop_zeno10 =
+    .minus n n =< .0 ;

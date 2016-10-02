@@ -25,7 +25,7 @@ case class CriticalPair(
 
 object CriticalPair {
   def of(fix: Fix, args: IList[Term]): CriticalPair = {
-    fix.unfold.apply(args).drive match {
+    fix.unfold.apply(args).reduce match {
       case term: Case if term.matchedTerm.leftmost.isInstanceOf[Fix] =>
         val AppView(matchFun: Fix, matchArgs: IList[Term]) = term.matchedTerm
         of(matchFun, matchArgs)

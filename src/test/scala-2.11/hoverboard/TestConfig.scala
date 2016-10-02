@@ -5,7 +5,9 @@ import org.scalatest._
 import org.scalatest.prop.PropertyChecks
 
 trait TestConfig extends FlatSpec with Matchers with PropertyChecks {
+
   override implicit val generatorDrivenConfig =
+
     PropertyCheckConfig(
       // TODO remove this low minSuccessful value when at v1.0 and I can be bothered to wait for all the test cases to finish!
       minSuccessful = 16,

@@ -8,10 +8,14 @@ import scalaz.{Name => _, _}
 import Scalaz._
 
 case class Lam(binding: Name, body: Term) extends Term {
-  override def driveHead(env: Env): Term = this
+  override def reduceHead(env: Env): Term =
+    if (body == Bot)
+      Bot
+    else
+      this
 
-  override def driveSubterms(env: Env): Term =
-    avoidCapture(env.bindingsSet).mapImmediateSubterms(_.drive(env))
+  override def reduceSubterms(env: Env): Term =
+    avoidCapture(env.bindingsSet).mapImmediateSubterms(_.reduce(env))
 
   override def :/(sub: Substitution): Lam = {
     val newSub = sub - binding
@@ -53,10 +57,10 @@ case class Lam(binding: Name, body: Term) extends Term {
     args.tail.toNel.fold(reduced)(args => reduced.betaReduce(args))
   }
 
-  override def driveHeadApp(env: Env, args: NonEmptyList[Term]): Term =
-    betaReduce(args).drive(env.havingSeen(App(this, args)))
+  override def reduceHeadApp(env: Env, args: NonEmptyList[Term]): Term =
+    betaReduce(args).reduce(env.havingSeen(App(this, args)))
 
-  override def driveHeadCase(env: Env, enclosingCase: Case): Term =
+  override def reduceHeadCase(env: Env, enclosingCase: Case): Term =
     throw new IllegalStateException("Cannot pattern match a lambda")
 
   override def flattenLam: (IList[Name], Term) =

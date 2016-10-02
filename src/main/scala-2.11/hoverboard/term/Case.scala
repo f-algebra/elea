@@ -8,37 +8,37 @@ import Scalaz._
 
 case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.Index) extends Term {
 
-  override def driveHead(env: Env): Term =
+  override def reduceHead(env: Env): Term =
     if (branches.all(_.body == Bot))
       Bot
     else if (branches.all(_.isIdentity(matchedTerm)))
       matchedTerm
     else
-      matchedTerm.driveHeadCase(env, this)
+      matchedTerm.reduceHeadCase(env, this)
 
-  final def driveBranches(env: Env): Case =
-    copy(branches = branches.map(_.drive(env, matchedTerm)))
+  final def reduceBranches(env: Env): Case =
+    copy(branches = branches.map(_.reduce(env, matchedTerm)))
 
   /**
-    * Re-drive after branches have been modified, but when we know the matched term has not been altered.
+    * Re-reduce after branches have been modified, but when we know the matched term has not been altered.
     */
-  final def driveIgnoringMatchedTerm(env: Env): Term =
-    driveBranches(env).driveHead(env)
+  final def reduceIgnoringMatchedTerm(env: Env): Term =
+    reduceBranches(env).reduceHead(env)
 
-  override protected def driveSubterms(env: Env): Term =
-    copy(matchedTerm = matchedTerm.drive(env)).driveBranches(env)
+  override protected def reduceSubterms(env: Env): Term =
+    copy(matchedTerm = matchedTerm.reduce(env)).reduceBranches(env)
 
   // Floating pattern matches out of function position
-  override def driveHeadApp(env: Env, args: NonEmptyList[Term]): Term =
+  override def reduceHeadApp(env: Env, args: NonEmptyList[Term]): Term =
     C(x => App(Var(x), args))
       .applyToBranches(this)
-      .driveIgnoringMatchedTerm(env)
+      .reduceIgnoringMatchedTerm(env)
 
   // Case-case disributivity rule
-  override def driveHeadCase(env: Env, enclosingCase: Case): Term =
+  override def reduceHeadCase(env: Env, enclosingCase: Case): Term =
     C(x => enclosingCase.copy(matchedTerm = Var(x)))
       .applyToBranches(this)
-      .driveIgnoringMatchedTerm(env)
+      .reduceIgnoringMatchedTerm(env)
 
   override def :/(sub: Substitution): Term =
     Case(matchedTerm :/ sub, branches.map(_ :/ sub), index)
@@ -64,9 +64,9 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
       branches = branches.map(_.mapImmediateSubtermsWithBindings(f)))
 
   override def toString = {
-    s"case[$index] $matchedTerm" +
-      branches.map("\n" + _.toString).concatenate.indent +
-      "\nend"
+    (s"\ncase[$index] $matchedTerm" +
+      branches.map("\n" + _.toString).concatenate +
+      "\nend").indent
   }
 
   def zip(other: Term): Option[IList[(Term, Term)]] = {

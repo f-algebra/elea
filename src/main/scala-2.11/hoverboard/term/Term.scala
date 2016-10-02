@@ -8,7 +8,7 @@ import scalaz.{Name => _, _}
 import Scalaz._
 
 // TODO: Since terms are immutable, could we get faster equality by first checking reference equality?
-// TODO: Make context fissioning use the SCC unfolding logic, and remove unfolding from drive (it's only in there for fission)
+// TODO: Make context fissioning use the SCC unfolding logic, and remove unfolding from reduce (it's only in there for fission)
 
 abstract class Term extends TermLike[Term] {
 
@@ -24,42 +24,42 @@ abstract class Term extends TermLike[Term] {
     C(gap => this.apply(context.apply(Var(gap))))
 
   /**
-    * Drive (simplify) a term all of whose sub-terms have already been driven
+    * reduce (simplify) a term all of whose sub-terms have already been reduced
     */
-  def driveHead(env: Env): Term = this
+  def reduceHead(env: Env): Term = this
 
   /**
-    * Drive given that this is a function applied to the provided arguments,
-    * and when all sub-terms have already been driven.
+    * reduce given that this is a function applied to the provided arguments,
+    * and when all sub-terms have already been reduced.
     */
-  def driveHeadApp(env: Env, args: NonEmptyList[Term]): Term = App(this, args)
+  def reduceHeadApp(env: Env, args: NonEmptyList[Term]): Term = App(this, args)
 
   /**
-    * Drive given that this is a `matchedTerm` in a [[Case]] with the provided branches,
-    * and when all sub-terms have already been driven.
+    * reduce given that this is a `matchedTerm` in a [[Case]] with the provided branches,
+    * and when all sub-terms have already been reduced.
     */
-  def driveHeadCase(env: Env, enclosingCase: Case): Term = enclosingCase.copy(matchedTerm = this)
+  def reduceHeadCase(env: Env, enclosingCase: Case): Term = enclosingCase.copy(matchedTerm = this)
 
   /**
-    * Drive (simplify) all sub-terms of a term
+    * reduce (simplify) all sub-terms of a term
     */
-  protected def driveSubterms(env: Env): Term =
-    mapImmediateSubterms(_.drive(env))
+  protected def reduceSubterms(env: Env): Term =
+    mapImmediateSubterms(_.reduce(env))
 
   /**
-    * Drive (simplify). Driving is the name of the less complex rewriting step
+    * reduce (simplify). Driving is the name of the less complex rewriting step
     * which occurs within supercompilation.
     * @param env Environment the rewrite occurs within, e.g. what [[hoverboard.rewrite.Direction]] we are preserving
     */
-  def drive(env: Env): Term = {
+  def reduce(env: Env): Term = {
     val result =
       if (env.alreadySeen(this))
         this
-      else driveSubterms(env).driveHead(env)
+      else reduceSubterms(env).reduceHead(env)
     result
   }
 
-  final lazy val drive: Term = drive(Env.empty)
+  final lazy val reduce: Term = reduce(Env.empty)
 
   def /(from: Name): Substitution =
     Substitution(from -> this)
@@ -98,16 +98,19 @@ abstract class Term extends TermLike[Term] {
 
   final def explore: IList[Term] = {
     val unfolded = this
-      .mapSubterms {
+      .mapSubtermsAndThis {
         case fix: Fix => fix.body.apply(fix.body.apply(Bot))
         case other => other
       }
-      .drive
+      .reduce
     unfolded.deepBranches
   }
 
   final def exploreSet: ISet[Term] =
     ISet.fromFoldable(explore)
+
+  final def mapSubtermsAndThis(f: Term => Term): Term =
+    f(mapSubterms(f))
 
   def flattenLam: (IList[Name], Term) = (IList.empty, this)
 

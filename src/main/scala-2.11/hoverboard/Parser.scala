@@ -37,13 +37,16 @@ object Parser {
     import fastparse.WhitespaceApi
     import fastparse.noApi._
 
-    val White = WhitespaceApi.Wrapper {
+    val whitespace = {
       import fastparse.all._
-      NoTrace((" " | "\n" | "\r").rep)
+      lazy val commentBody: P[Unit] = P(CharsWhile(_ != '*') ~/ "*" ~/ ("/" | commentBody))
+      (CharIn(" \n\r") | "/*" ~ commentBody).rep
     }
+
+    val White = WhitespaceApi.Wrapper(whitespace)
     import White._
 
-    val keywords = Set("fix", "fn", "case", "of", "else", "let", "end", "unfold", "false", "true", "not")
+    val keywords = Set("fix", "fn", "case", "of", "else", "let", "end", "unfold", "assert", "false", "true", "not", "in")
 
     val lowercase = P(CharIn('a' to 'z') | CharIn(Seq('_', 'α')))
     val uppercase = P(CharIn('A' to 'Z') | CharIn('0' to '9') | CharIn(Seq('\'')))
@@ -83,8 +86,15 @@ object Parser {
         case BinOp.Or => Logic.or(m._1, m._3)
       }
     }
+    val assertion: P[Case] = P("assert" ~/ pattern ~ "<-" ~/ term ~ "in" ~/ term).map {
+      case (pattern, matchedTerm, branchTerm) =>
+        val branches = NonEmptyList[Branch](
+          PatternBranch(pattern, branchTerm),
+          DefaultBranch(Logic.Truth))
+        Case(matchedTerm, branches, Case.Index.fresh)
+    }
     val caseOf: P[Case] = P("case" ~/ caseIndex ~ term ~ branch.rep(1) ~ "end" ~/).map(m => Case(m._2, IList(m._3 : _*).toNel.get, m._1))
-    val term: P[Term] = P(NoCut(prop) | negation | fix | lam | app | caseOf)
+    val term: P[Term] = P(NoCut(prop) | negation | assertion | fix | lam | app | caseOf)
 
     val pattern: P[Pattern] = P(definedTerm ~ varName.rep).map(m => Pattern(m._1.asInstanceOf[Constructor], IList(m._2 : _*)))
 
@@ -106,7 +116,7 @@ object Parser {
       val termDef: P[Statement] = P("let" ~/ definitionName ~/ "=" ~/ term ~ ";" ~/).map(m => TermDef(m._1, m._2))
       val conDefs: P[Statement] = P("data" ~/ constructorDef ~ ";" ~/).map(ConstructorDef)
 
-      P(P(termDef | conDefs).map(Some(_)) | P(End).map(_ => None))
+      P(whitespace ~ (P(termDef | conDefs).map(Some(_)) | P(End).map(_ => None)))
     }
   }
 
@@ -114,11 +124,10 @@ object Parser {
     * Parses the first definition in the given string.
     */
   def parseStatement(text: String)(implicit program: Program): Option[(Statement, String)] = {
-    val trimmedText = text.trim
-    val parsed = new Rules(program).statement.parse(trimmedText).get
+    val parsed = new Rules(program).statement.parse(text).get
     parsed.value match {
       case None => None
-      case Some(stmt) => Some((stmt, trimmedText.substring(parsed.index)))
+      case Some(stmt) => Some((stmt, text.substring(parsed.index)))
     }
   }
 

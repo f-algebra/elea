@@ -15,6 +15,8 @@ final case class Context private(gap: Name, context: Term) extends TermLike[Cont
     caseOf.copy(branches = newBranches)
   }
 
+  lazy val isConstant: Boolean = !context.freeVars.contains(gap)
+
   override lazy val freeVars: ISet[Name] = context.freeVars.delete(gap)
 
   /**
@@ -25,12 +27,16 @@ final case class Context private(gap: Name, context: Term) extends TermLike[Cont
   def strip(term: Term): Option[Term] = {
     var anyFailures = false
     val stripped = term.mapBranchesWithBindings { (bindings, term) =>
-      if (!bindings.intersection(context.freeVars).isEmpty) {
+      if (term == Bot) {
+        term
+      } else if (!bindings.intersection(context.freeVars).isEmpty) {
         anyFailures = true
         term
       } else context.unifyLeft(term) match {
         case Some(sub) if sub.boundVars == ISet.singleton(gap) =>
           Var(gap) :/ sub
+        case Some(sub) if sub.boundVars.isEmpty && this.isConstant =>
+          Bot
         case _ =>
           anyFailures = true
           term

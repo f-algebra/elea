@@ -18,8 +18,8 @@ case class Constructor(name: Name, argumentCount: Int, recursiveArgs: ISet[Int])
         branch.bindArgs(args)
     }
 
-  override def driveHeadCase(env: Env, enclosingCase: Case): Term =
-    reduceCase(IList.empty, enclosingCase.branches).drive(env)
+  override def reduceHeadCase(env: Env, enclosingCase: Case): Term =
+    reduceCase(IList.empty, enclosingCase.branches).reduce(env)
 
   override def toString = Name.asDefinition(name.toString)
 

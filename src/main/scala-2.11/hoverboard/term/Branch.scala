@@ -12,7 +12,7 @@ import Scalaz._
 sealed abstract class Branch extends TermLike[Branch] {
   val body: Term
 
-  def drive(env: Env, matchedTerm: Term): Branch
+  def reduce(env: Env, matchedTerm: Term): Branch
 
   /**
     * Whether this branch always returns the same term that was being matched.
@@ -48,7 +48,7 @@ sealed abstract class Branch extends TermLike[Branch] {
 }
 
 case class DefaultBranch(body: Term) extends Branch with FirstOrder[Branch] {
-  def drive(env: Env, matchedTerm: Term) = DefaultBranch(body.drive(env))
+  def reduce(env: Env, matchedTerm: Term) = DefaultBranch(body.reduce(env))
 
   def bindArgs(constructorArgs: IList[Term]): Term = body
 
@@ -83,9 +83,9 @@ case class DefaultBranch(body: Term) extends Branch with FirstOrder[Branch] {
 }
 
 case class PatternBranch(pattern: Pattern, body: Term) extends Branch {
-  def drive(env: Env, matchedTerm: Term) = {
+  def reduce(env: Env, matchedTerm: Term) = {
     val branch = avoidCapture(env.bindingsSet.union(matchedTerm.freeVars))
-    branch.copy(body = branch.body.drive(env.withMatch(matchedTerm, branch.pattern)))
+    branch.copy(body = branch.body.reduce(env.withMatch(matchedTerm, branch.pattern)))
   }
 
   def bindArgs(constructorArgs: IList[Term]): Term = {

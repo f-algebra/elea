@@ -20,7 +20,7 @@ class Program(val definitions: Map[String, Term]) {
 
   def loadURL(url: URL): Program = {
     val text = Source.fromURL(url).mkString
-    Parser.parseAll(text)(_.modifyTerm(_.drive))(this)
+    Parser.parseAll(text)(_.modifyTerm(_.reduce))(this)
   }
 }
 

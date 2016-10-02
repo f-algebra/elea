@@ -1,6 +1,6 @@
 package hoverboard
 
-import hoverboard.term.{Context, Term}
+import hoverboard.term._
 import org.scalactic.Equality
 import org.scalatest.enablers.{Emptiness, Containing}
 
@@ -31,7 +31,9 @@ object Util {
   implicit object ContextAlphaEq extends Equality[Context] {
     override def areEqual(a: Context, b: Any): Boolean =
       b match {
-        case b: Context => a =@= b
+        case b: Context =>
+          val filler = Var(Name.fresh("ctx_gap_filler"))
+          a.apply(filler) =@= b.apply(filler)
         case _ => false
       }
   }

@@ -130,6 +130,11 @@ class TermTest extends TestConfig {
     fused should not contain term".Nil"
   }
 
+  it should "correctly list potential values for omega" in {
+    val omega = term"fix omega -> .Suc omega".reduce
+    omega.exploreSet should contain (term".Suc (.Suc _|_)")
+  }
+
   "mapBranchesWithBindings" should "descend into case-of branches" in {
     var seen = ISet.empty[(ISet[Name], Term)]
     term"case x | .0 -> a | .Suc x' -> case x' | .0 -> b | .Suc x'' -> c end end"
@@ -143,10 +148,16 @@ class TermTest extends TestConfig {
       (ISet.fromList(List(Name("x'"), Name("x''"))), Var("c"))))
   }
 
-  "stripContext" should "strip (.Cons y _) from an example" in {
-    C(x => term".Cons y"(Var(x)))
-      .strip(term"case xs | .Nil -> .Cons y .Nil | .Cons x xs' -> .Cons y (.app (f xs') (.Cons x .Nil)) end") shouldEqual
+  "stripContext" should "strip (.Cons y _) correctly" in {
+    val ctx = C(x => term".Cons y ${Var(x)}")
+
+    ctx.strip(term".Cons y .Nil") shouldEqual Some(term".Nil")
+
+    ctx.strip(term"case xs | .Nil -> .Cons y .Nil | .Cons x xs' -> .Cons y (.app (f xs') (.Cons x .Nil)) end") shouldEqual
       Some(term"case xs | .Nil -> .Nil | .Cons x xs' -> .app (f xs') (.Cons x .Nil) end")
+
+    ctx.strip(term"case xs | .Nil -> _|_ | .Cons x xs' -> .Cons y (.app (f xs') (.Cons x .Nil)) end") shouldEqual
+      Some(term"case xs | .Nil -> _|_ | .Cons x xs' -> .app (f xs') (.Cons x .Nil) end")
   }
 
   it should "fail for invalid examples" in {
@@ -156,6 +167,17 @@ class TermTest extends TestConfig {
       .strip(term"case xs | .Nil -> .Cons y .Nil | .Cons y xs' -> .Cons y (.app (f xs') (.Cons x .Nil)) end") shouldBe empty
   }
 
+  it should "return _|_ when stripping constants" in {
+    val ctx = C(_ => term".True")
+    ctx.strip(term".True").get shouldEqual term"_|_"
+    ctx.strip(term"_|_").get shouldEqual term"_|_"
+    ctx.strip(term"case x | .0 -> .True | .Suc x' -> _|_ end").get shouldEqual
+      term"case x | .0 -> _|_ | .Suc x' -> _|_ end"
+
+    ctx.strip(term".False") shouldEqual None
+    ctx.strip(term"case x | .0 -> .True | .Suc x' -> .False end") shouldEqual None
+  }
+
   "guessConstructorContext" should "find the context for Reverse fused into Snoc" in {
     term"fix f xs -> case xs | .Nil -> .Cons y .Nil | .Cons x xs' -> .app (f xs') (.Cons x .Nil) end"
       .asInstanceOf[Fix].guessConstructorContext should contain (C(x => term".Cons y"(Var(x))))
@@ -163,12 +185,26 @@ class TermTest extends TestConfig {
 
   "fissionConstructorContext" should "fission (.Cons y _) out of .reverse fused into .snoc" in {
     val Some((ctx, newFix)) = term".revSnoc y"
-      .drive
+      .reduce
       .asInstanceOf[Fix]
       .fissionConstructorContext
     ctx shouldEqual C(x => term".Cons y ${Var(x)}")
-    val otherFix = term"fix rev xs -> case xs | .Nil -> .Nil | .Cons x xs' -> .snoc x (rev xs') end".drive
+    val otherFix = term"fix rev xs -> case xs | .Nil -> .Nil | .Cons x xs' -> .snoc x (rev xs') end".reduce
     otherFix shouldEqual (newFix: Term)
+  }
+
+  it should "reduce constant functions to their constants" in {
+    val constantTrue = term"fix f n -> case n | .0 -> .True | .Suc x' -> f x' end".reduce.asInstanceOf[Fix]
+    constantTrue.guessConstructorContext.get shouldEqual C(_ => term".True")
+    val Some((ctx, newFix)) = constantTrue.fissionConstructorContext
+    ctx shouldEqual C(_ => term".True")
+    (newFix: Term).reduce shouldEqual Bot
+  }
+
+  it should "not reduce functions without simplifying them (actually this is okay for now since fission is used with the homeo-embedding check)" in {
+    val omega = term"fix omega -> .Suc omega end".reduce.asInstanceOf[Fix]
+    omega.guessConstructorContext.get shouldEqual C(x => term".Suc ${Var(x)}")
+    // omega.fissionConstructorContext shouldBe empty
   }
 
   "homeomorphic embedding" should "work properly" in {
@@ -178,10 +214,10 @@ class TermTest extends TestConfig {
   }
 
   "fppf" should "be recognisable" in {
-    term".add x y".drive.asInstanceOf[App].isFPPF shouldBe true
-    term".add x x".drive.asInstanceOf[App].isFPPF shouldBe false
-    term".add (.mul x y) z".drive.asInstanceOf[App].isFPPF shouldBe false
-    term".add x (.mul y z)".drive.asInstanceOf[App].isFPPF shouldBe true
+    term".add x y".reduce.asInstanceOf[App].isFPPF shouldBe true
+    term".add x x".reduce.asInstanceOf[App].isFPPF shouldBe false
+    term".add (.mul x y) z".reduce.asInstanceOf[App].isFPPF shouldBe false
+    term".add x (.mul y z)".reduce.asInstanceOf[App].isFPPF shouldBe true
   }
 
   "strict args" should "be recognisable" in {

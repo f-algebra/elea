@@ -13,6 +13,20 @@ class Supercompiler {
 
   import Supercompiler._
 
+  final private def coupled(
+      skeletonFix: Fix,
+      skeletonArgs: IList[Term],
+      goalFix: Fix,
+      goalArgs: IList[Term]): Boolean = {
+    val skeletonIdx = CriticalPair.of(skeletonFix, skeletonArgs).path.headOption
+    val goalIdx = CriticalPair.of(goalFix, goalArgs).path.headOption
+    skeletonArgs.length == goalArgs.length &&
+      skeletonIdx.isDefined &&
+      goalIdx.isDefined &&
+      skeletonIdx.get == goalIdx.get
+  }
+
+
   final private def dive(env: Env, skeleton: Term, goal: Term): (IList[Term], Term, Substitution) = {
     val (rippledSkeletons, rippledGoalSubterms, rippleSubs) = goal.immediateSubterms.map(ripple(env, skeleton, _)).unzip3
     val divedSub = Substitution.unionDisjoint(rippleSubs)
@@ -29,7 +43,7 @@ class Supercompiler {
       case (skeleton: Var, goal: Var) =>
         (IList(skeleton), skeleton, goal / skeleton.name)
       case (AppView(skelFix: Fix, skelArgs: IList[Term]), AppView(goalFix: Fix, goalArgs: IList[Term]))
-          if skelArgs.length == goalArgs.length && skelFix.index == goalFix.index =>
+          if coupled(skelFix, skelArgs, goalFix, goalArgs) =>
         val (rippledArgSkeletons: IList[IList[Term]], rippledArgGoals: IList[Term], rippledArgSubs: IList[Substitution]) =
           skelArgs.fzipWith(goalArgs)(ripple(env, _, _)).unzip3
         val rippledSkeletons: IList[Term] = (rippledArgSkeletons.sequence: IList[IList[Term]]).map { args => skelFix.apply(args) }
@@ -80,7 +94,7 @@ class Supercompiler {
         failure
       else {
         supercompile(env, goal) match {
-          case AppView(goalFun: Fix, goalArgs) =>
+          case AppView(goalFun: Fix, goalArgs) if env.rewriteDirection.canIncrease =>
             goalFun.fissionConstructorContext match {
               case Some((fissionedCtx, fissionedFix)) =>
                 val newGoal = fissionedFix.apply(goalArgs)
@@ -100,7 +114,7 @@ class Supercompiler {
     supercompile(Env.empty, term)
 
   def supercompile(env: Env, term: Term): Term = {
-    term.drive(env.rewriteEnv) match {
+    term.reduce(env.rewriteEnv) match {
       case AppView(fun: Fix, args) =>
         if (fun.isFPPF(args))
           fun.apply(args)
@@ -111,12 +125,13 @@ class Supercompiler {
               // No existing fold has a matching critical path, so we should continue unrolling
               val fold = Fold(cp, fun.apply(args))
               val newEnv = env.withFold(fold)
-              val unfoldedTerm = fold.unfoldedFrom.drive(env.rewriteEnv)
+              val unfoldedTerm = fold.unfoldedFrom.reduce(env.rewriteEnv)
               val supercompiledTerm = supercompile(newEnv, unfoldedTerm)
               if (!supercompiledTerm.freeVars.contains(fold.foldVar)) {
                 // If there are no folds we could also be trying to apply then supercompilation has completely failed
                 // and we should just return the original term
-                if (env.folds.isEmpty) {
+                // TODO remove me if everything is working
+                if (false && env.folds.isEmpty) {
                   fun.apply(args)
                 } else {
                   supercompiledTerm
@@ -125,7 +140,7 @@ class Supercompiler {
                 val fixBody = Lam(fold.foldVar :: fold.args, supercompiledTerm)
                 Fix(fixBody, cp.fix.index)
                   .apply(fold.args.map(Var(_): Term))
-                  .drive(env.rewriteEnv)
+                  .reduce(env.rewriteEnv)
               }
             case Some(fold) =>
               // We've found a matching critical path, so it's time to ripple
@@ -135,29 +150,47 @@ class Supercompiler {
                 .map(_ :/ rippleSub)
                 .map(fold.from.unifyLeft)
                 .map(_.getOrElse { throw new AssertionError("Successful ripple was not unifiable with original skeleton")})
-              successfulRipples.foldLeft(rippledGoal :/ rippleSub)((goal, sub) => goal replace (fold.from :/ sub, fold.to :/ sub))
+              val result = successfulRipples.foldLeft(rippledGoal :/ rippleSub) { (goal, sub) =>
+                goal.replace(fold.from :/ sub, fold.to :/ sub)
+              }
+              result
           }
         }
       case AppView(fun, args) if args.nonEmpty =>
         // Constructor or variable function, so supercompile the arguments
         App(fun, args.map(supercompile(env, _)))
       case leq: Leq =>
+        val supercompiledLargerTerm = supercompile(env.invertDirection, leq.largerTerm)
         supercompile(env, leq.smallerTerm) match {
           case FPPF(fun: Fix, argVars) =>
             // Apply the least-fixed-point rule
             val newSmallerTerm = fun
               .body
-              .betaReduce(NonEmptyList(Lam(argVars, leq.largerTerm)))
+              .betaReduce(NonEmptyList(Lam(argVars, supercompiledLargerTerm)))
               .apply(argVars.map(Var(_): Term))
-            supercompile(env, Leq(newSmallerTerm, leq.largerTerm))
+            supercompile(env, Leq(newSmallerTerm, supercompiledLargerTerm))
           case newSmallerTerm =>
-            Leq(newSmallerTerm, leq.largerTerm).drive(env.rewriteEnv)
+            Leq(newSmallerTerm, supercompiledLargerTerm).reduce(env.rewriteEnv)
         }
       case term: Case =>
         // Descend into the branches of pattern matches
         val newBranches = term.branches.map(supercompileBranch(env, term.matchedTerm))
         val newMatchedTerm = supercompile(env, term.matchedTerm)
-        term.copy(branches = newBranches, matchedTerm = newMatchedTerm).drive(env.rewriteEnv)
+        val fissionedMatchedTerm = newMatchedTerm match {
+          case AppView(matchFix: Fix, matchArgs) =>
+            matchFix.fissionConstructorContext(matchArgs) match {
+              case Some(fissionedTerm) =>
+                fissionedTerm
+              case _ =>
+                newMatchedTerm
+            }
+          case _ =>
+            newMatchedTerm
+        }
+        term.copy(
+          branches = newBranches,
+          matchedTerm = fissionedMatchedTerm)
+          .reduce(env.rewriteEnv)
       case term =>
         term
     }
@@ -186,7 +219,7 @@ object Supercompiler {
        nonReindexedFrom: Term) {
 
     val foldVar: Name = Name.fresh("μ")
-    val index: Fix.Index = Fix.freshFiniteIndex
+    val index: Fix.Index = criticalPair.fix.index // Fix.freshFiniteIndex
     val args: IList[Name] = nonReindexedFrom.freeVars.toIList
     val to: Term = Var(foldVar).apply(args.map(Var(_): Term))
     val reindexedFix: Fix = criticalPair.fix.copy(index = index)
@@ -214,6 +247,8 @@ object Supercompiler {
 
     def invertDirection: Env =
       copy(rewriteEnv = rewriteEnv.invertDirection)
+
+    def rewriteDirection = rewriteEnv.rewriteDirection
 
     def bindingsSet: ISet[Name] = rewriteEnv.bindingsSet
   }

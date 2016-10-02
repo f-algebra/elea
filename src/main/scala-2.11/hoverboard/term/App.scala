@@ -11,23 +11,23 @@ case class App private(fun: Term, args: NonEmptyList[Term]) extends Term with Fi
 
   override def apply(args2: IList[Term]) = App(fun, args :::> args2)
 
-  override def driveHead(env: Env): Term = {
-    val driven = fun.driveHeadApp(env, args)
+  override def reduceHead(env: Env): Term = {
+    val reduced = fun.reduceHeadApp(env, args)
     env.matches
-      .lookup(driven)
-      // Even though this is a constructor we should re-drive in case any of its
+      .lookup(reduced)
+      // Even though this is a constructor we should re-reduce in case any of its
       // free vars has been matched to something
-      .map(_.asTerm.drive(env))
-      .getOrElse(driven)
+      .map(_.asTerm.reduce(env))
+      .getOrElse(reduced)
   }
 
-  override def driveHeadApp(env: Env, args2: NonEmptyList[Term]): Term =
+  override def reduceHeadApp(env: Env, args2: NonEmptyList[Term]): Term =
     apply(args2.list)
 
-  override def driveHeadCase(env: Env, enclosingCase: Case): Term =
+  override def reduceHeadCase(env: Env, enclosingCase: Case): Term =
     fun match {
-      case fun: Constructor => fun.reduceCase(args.list, enclosingCase.branches).drive(env)
-      case _ => super.driveHeadCase(env, enclosingCase)
+      case fun: Constructor => fun.reduceCase(args.list, enclosingCase.branches).reduce(env)
+      case _ => super.reduceHeadCase(env, enclosingCase)
     }
 
   private def flatten: App =

@@ -13,7 +13,7 @@ import Scalaz._
 case class Leq(smallerTerm: Term, largerTerm: Term)
   extends Term with FirstOrder[Term] {
 
-  override def driveHead(env: Env): Term =
+  override def reduceHead(env: Env): Term =
     if (smallerTerm == Bot)
       Logic.Truth
     else if (largerTerm == Logic.Falsity)
@@ -24,7 +24,7 @@ case class Leq(smallerTerm: Term, largerTerm: Term)
       case smallerTerm: Case =>
         C(x => Leq(Var(x), largerTerm))
           .applyToBranches(smallerTerm)
-          .driveIgnoringMatchedTerm(env)
+          .reduceIgnoringMatchedTerm(env)
       case AppView(smallerConFun: Constructor, smallerConArgs) =>
         if (largerTerm == Bot)
           Logic.Falsity
@@ -34,7 +34,7 @@ case class Leq(smallerTerm: Term, largerTerm: Term)
               Logic.Falsity
             else
               Logic.and(smallerConArgs.fzipWith(largerConArgs)(Leq))
-                .drive(env)
+                .reduce(env)
           case Leq(ff, prop) if ff == Logic.Falsity && smallerConFun == Logic.Falsity =>
             // Double negation elimination
             prop
@@ -45,8 +45,8 @@ case class Leq(smallerTerm: Term, largerTerm: Term)
         this
     }
 
-  override def driveSubterms(env: Env): Term = {
-    Leq(smallerTerm.drive(env), largerTerm.drive(env.invertDirection))
+  override def reduceSubterms(env: Env): Term = {
+    Leq(smallerTerm.reduce(env), largerTerm.reduce(env.invertDirection))
   }
 
   def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Term =

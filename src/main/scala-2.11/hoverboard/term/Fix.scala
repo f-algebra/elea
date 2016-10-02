@@ -11,32 +11,41 @@ import Scalaz._
 case class Fix(body: Term,
                index: Fix.Index,
                name: Option[String] = None,
-               driven: Boolean = false)
+               reduced: Boolean = false)
   extends Term with FirstOrder[Term] {
 
   require(name.isEmpty || freeVars.isEmpty,
     s"""Cannot name a fixed point with free variables. Name "${name.get}", free variables "$freeVars"""")
 
-  override def drive(env: Env): Term =
-    if (driven)
+  override def reduce(env: Env): Term =
+    if (reduced)
       this
     else {
-      val newFix = super.drive(env)
+      val newFix = super.reduce(env)
       if (newFix =@= this) this // preserve `name`
       else newFix
     } match {
-      case newFix: Fix => newFix.copy(driven = true)
+      case newFix: Fix => newFix.copy(reduced = true)
       case other => other
     }
 
-  override def driveHead(env: Env): Term = {
+  override def reduceHead(env: Env): Term = {
     constantArgs
-      .headOption.map(argIdx => removeConstantArg(argIdx).drive(env))
-      .getOrElse(this)
+      .headOption.map(argIdx => removeConstantArg(argIdx).reduce(env))
+      .getOrElse {
+        body match {
+          case body: Lam if !body.body.freeVars.contains(body.binding) =>
+            body.body
+          case body: Bot.type =>
+            Bot
+          case _ =>
+            this
+        }
+      }
   }
 
   // TODO filter on decreasing/strict args
-  override def driveHeadApp(env: Env, args: NonEmptyList[Term]): Term = {
+  override def reduceHeadApp(env: Env, args: NonEmptyList[Term]): Term = {
     if (strictArgs(args.list).any(_ == Bot)) {
       Bot
     } else {
@@ -48,7 +57,7 @@ case class Fix(body: Term,
             case caseArg: Case =>
               C(x => this.apply(args.list.setAt(idx, Var(x))))
                 .applyToBranches(caseArg)
-                .driveIgnoringMatchedTerm(env)
+                .reduceIgnoringMatchedTerm(env)
           }
         case None =>
           body match {
@@ -56,9 +65,9 @@ case class Fix(body: Term,
               // If an argument to a fixed-point is a constructor or a ⊥, we can try to unfold
               // the fixed-point
               val originalTerm = App(this, args)
-              val driven = App(body.body, args).drive(env)
+              val reduced = App(body.body, args).reduce(env)
 
-              lazy val wasProductive = driven.subtermsContaining(ISet.singleton(body.binding)).all {
+              lazy val wasProductive = reduced.subtermsContaining(ISet.singleton(body.binding)).all {
                 case term@App(Var(f), xs) if f == body.binding =>
                   term.strictlyEmbedsInto(App(Var(f), args))
                 case _ =>
@@ -66,18 +75,19 @@ case class Fix(body: Term,
               }
 
               val isCaseOfSubterm =
-                driven match {
-                  case driven: Case =>
-                    args.any(arg => arg == driven.matchedTerm || arg.freeSubtermSet.contains(driven.matchedTerm))
+                reduced match {
+                  case reduced: Case =>
+                    args.any(arg => arg == reduced.matchedTerm || arg.freeSubtermSet.contains(reduced.matchedTerm))
                   case _ => false
                 }
-
-              if (!isCaseOfSubterm && wasProductive)
-                (driven :/ (this / body.binding)).drive(env.havingSeen(originalTerm))
+gi
+              // TODO remove all this unfolding logic if I can get it working without it
+              if (false && !reduced.isInstanceOf[Case] && wasProductive)
+                (reduced :/ (this / body.binding)).reduce(env.havingSeen(originalTerm))
               else
-                super.driveHeadApp(env, args)
+                super.reduceHeadApp(env, args)
             case _ =>
-              super.driveHeadApp(env, args)
+              super.reduceHeadApp(env, args)
           }
       }
     }
@@ -178,7 +188,6 @@ case class Fix(body: Term,
         arbitraryOrderingNumber ?|? other.arbitraryOrderingNumber
     }
 
-  // TODO implement this method for constructors with more or fewer than one recursive argument
   def guessConstructorContext: Option[Context] =
     body match {
       case body: Lam =>
@@ -190,9 +199,15 @@ case class Fix(body: Term,
             case constr: Constructor => Some(constr)
             case _ => None
           }
-          if constr.recursiveArgs.size == 1
-          recArgIdx = constr.recursiveArgs.toList.head
-          context = C(ctxGap => constr.apply(potentialContext.asInstanceOf[App].args.list.setAt(recArgIdx, Var(ctxGap))))
+          context <- constr.recursiveArgs.toList match {
+            case Seq() =>
+              Some(C(_ => potentialContext))
+            case Seq(recArgIdx) =>
+              Some(C(ctxGap => constr.apply(potentialContext.asInstanceOf[App].args.list.setAt(recArgIdx, Var(ctxGap)))))
+            case _ =>
+              // TODO implement the case for recursive argument count > 1
+              None
+          }
           if context.freeVars.isSubsetOf(this.freeVars)
           if explored.all(t => context.strip(t).isDefined)
         } yield context
@@ -200,17 +215,22 @@ case class Fix(body: Term,
         None
     }
 
-  def fissionConstructorContext: Option[(Context, Fix)] =
+  final def fissionConstructorContext(args: IList[Term]): Option[Term] =
+    fissionConstructorContext.map {
+      case (context, newFix) => context.apply(newFix.apply(args))
+    }
+
+  lazy val fissionConstructorContext: Option[(Context, Fix)] =
     body match {
       case body: Lam =>
         for {
           ctx <- guessConstructorContext
           fixArgs = body.flatten._1.tail
           expandedCtx = C(gap => Lam(fixArgs, ctx.apply(Var(gap).apply(fixArgs.map(n => Var.apply(n): Term)))))
-          driven = body.apply(expandedCtx.apply(Var(body.binding))).drive
-          (fixArgs2, drivenBody) = driven.flattenLam
+          reduced = body.apply(expandedCtx.apply(Var(body.binding))).reduce
+          (fixArgs2, reducedBody) = reduced.flattenLam
           stripped <- ctx
-            .strip(drivenBody)
+            .strip(reducedBody)
             .tap(_ => assert(fixArgs == fixArgs2))
         } yield (ctx, Fix(Lam(body.binding, Lam(fixArgs, stripped)), index))
       case _ =>
@@ -223,7 +243,7 @@ case class Fix(body: Term,
         val vars = body.body.flattenLam._1.map(x => Var(x): Term)
         IList(0.until(argCount): _*).filter { i =>
           val args = vars.setAt(i, Bot)
-          body.body.apply(args).drive == Bot
+          body.body.apply(args).reduce == Bot
         }
       case _ =>
         IList.empty

@@ -7,7 +7,7 @@ import scalaz._
 import Scalaz._
 
 case class Var(name: Name) extends Term {
-  override def driveHead(env: Env) =
+  override def reduceHead(env: Env) =
     env.matches.lookup(this).fold(this: Term)(_.asTerm)
 
   override lazy val freeVars = ISet.singleton(name)

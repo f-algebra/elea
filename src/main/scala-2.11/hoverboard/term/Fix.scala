@@ -80,7 +80,7 @@ case class Fix(body: Term,
                     args.any(arg => arg == reduced.matchedTerm || arg.freeSubtermSet.contains(reduced.matchedTerm))
                   case _ => false
                 }
-gi
+
               // TODO remove all this unfolding logic if I can get it working without it
               if (false && !reduced.isInstanceOf[Case] && wasProductive)
                 (reduced :/ (this / body.binding)).reduce(env.havingSeen(originalTerm))

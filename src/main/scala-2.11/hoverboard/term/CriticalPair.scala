@@ -1,14 +1,17 @@
 package hoverboard.term
 
 import hoverboard._
-import scalaz.IList
+import scalaz.{ISet, IList}
 
 case class CriticalPair(
-  path: IList[Case.Index],
+  path: CriticalPath,
   fix: Fix,
   args: IList[Term]) {
 
-  def extendPath(idx: Case.Index): CriticalPair = copy(path = idx :: path)
+  def :/(sub: Substitution) = copy(path = path :/ sub)
+
+  def extendPathWithMatch(idx: Case.Index): CriticalPair =
+    copy(path = CriticalPath.Match(idx, path))
 
   /**
     * The _critical term_
@@ -25,15 +28,20 @@ case class CriticalPair(
 
 object CriticalPair {
   def of(fix: Fix, args: IList[Term]): CriticalPair = {
-    fix.unfold.apply(args).reduce match {
-      case term: Case if term.matchedTerm.leftmost.isInstanceOf[Fix] =>
+    val fixVar = Name.fresh("f")
+    lazy val argSubterms = ISet.unions(args.toList.map(arg => arg.freeSubtermSet.insert(arg)))
+    val cp = fix.body.apply(Var(fixVar) :: args).reduce match {
+      case term: Case
+          if term.matchedTerm.leftmost.isInstanceOf[Fix] && argSubterms.contains(term.matchedTerm) =>
         val AppView(matchFun: Fix, matchArgs: IList[Term]) = term.matchedTerm
         of(matchFun, matchArgs)
-          .extendPath(term.index)
+          .extendPathWithMatch(term.index)
       case term: Case =>
-        CriticalPair(IList(term.index), fix, args)
-      case _ =>
-        CriticalPair(IList.empty[Case.Index], fix, args)
+        CriticalPair(CriticalPath.Terminal(term.matchedTerm), fix, args)
+          .extendPathWithMatch(term.index)
+      case term =>
+        CriticalPair(CriticalPath.Terminal(term), fix, args)
     }
+    cp :/ fix / fixVar
   }
 }

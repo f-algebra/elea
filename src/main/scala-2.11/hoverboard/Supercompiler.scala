@@ -18,14 +18,11 @@ class Supercompiler {
       skeletonArgs: IList[Term],
       goalFix: Fix,
       goalArgs: IList[Term]): Boolean = {
-    val skeletonIdx = CriticalPair.of(skeletonFix, skeletonArgs).path.headOption
-    val goalIdx = CriticalPair.of(goalFix, goalArgs).path.headOption
+    val skeletonPath = CriticalPair.of(skeletonFix, skeletonArgs).path
+    val goalPath = CriticalPair.of(goalFix, goalArgs).path
     skeletonArgs.length == goalArgs.length &&
-      skeletonIdx.isDefined &&
-      goalIdx.isDefined &&
-      skeletonIdx.get == goalIdx.get
+      skeletonPath.couplesWith(goalPath)
   }
-
 
   final private def dive(env: Env, skeleton: Term, goal: Term): (IList[Term], Term, Substitution) = {
     val (rippledSkeletons, rippledGoalSubterms, rippleSubs) = goal.immediateSubterms.map(ripple(env, skeleton, _)).unzip3
@@ -54,34 +51,6 @@ class Supercompiler {
       case _ =>
         dive(env, skeleton, goal)
     }
-//
-//  final def mergeRipples(ripples: IMap[Name, (Term, Substitution)]): (Substitution, Substitution) =
-//    Substitution.union(ripples.values.map(_._2).toIList) match {
-//      case None =>
-//        throw new SubstitutionsNonUnifiableError(s"$ripples")
-//      case Some(mergedGenSub) =>
-//        val mergedCtxSub = Substitution.fromMap(ripples.map(_._1))
-//        (mergedCtxSub, mergedGenSub)
-//    }
-
-//  final def couple(env: Env, skeleton: Term, goal: Term): (IList[Term], Term, Substitution) = {
-//    val (ctx, skelSub, goalSub) = skeleton ᴨ goal
-//    val rippled: IMap[Name, (Term, Substitution)] =
-//      skelSub.toMap.intersectionWith(goalSub.toMap)(ripple(env, _, _))
-//    val (mergedCtxSub, mergedGenSub) = mergeRipples(rippled)
-//    // Simplifying assumption because I'm too hungover to figure out the general case
-//    mergedCtxSub.boundVars.toList match {
-//      case Seq(ctxVar) =>
-//        val newSkeletons = mergedGenSub.boundVars.map(x => ctx :/ Var(x) / ctxVar)
-//        val (critiquedCtx, critiquedSub) = critique(env, newSkeletons, ctx :/ mergedCtxSub)
-//        val fullSub = (mergedGenSub ++ critiquedSub).getOrElse {
-//          throw new SubstitutionsNonUnifiableError(s"$skeleton ++ $goal")
-//        }
-//        (critiquedCtx, fullSub)
-//      case _ =>
-//        (ctx :/ mergedCtxSub, mergedGenSub)
-//    }
-//  }
 
   // TODO potential optimisation: entire process could fail when critique fails
   def critique(env: Env, skeletons: IList[Term], goal: Term): (IList[Term], Term, Substitution) = {
@@ -115,46 +84,45 @@ class Supercompiler {
 
   def supercompile(env: Env, term: Term): Term = {
     term.reduce(env.rewriteEnv) match {
+      case FPPF(fun, args) =>
+        fun.apply(args.map(Var(_): Term))
       case AppView(fun: Fix, args) =>
-        if (fun.isFPPF(args))
-          fun.apply(args)
-        else {
-          val cp = CriticalPair.of(fun, args)
-          env.folds.find(_.criticalPair embedsInto cp) match {
-            case None =>
-              // No existing fold has a matching critical path, so we should continue unrolling
-              val fold = Fold(cp, fun.apply(args))
-              val newEnv = env.withFold(fold)
-              val unfoldedTerm = fold.unfoldedFrom.reduce(env.rewriteEnv)
-              val supercompiledTerm = supercompile(newEnv, unfoldedTerm)
-              if (!supercompiledTerm.freeVars.contains(fold.foldVar)) {
-                // If there are no folds we could also be trying to apply then supercompilation has completely failed
-                // and we should just return the original term
-                // TODO remove me if everything is working
-                if (false && env.folds.isEmpty) {
-                  fun.apply(args)
-                } else {
-                  supercompiledTerm
-                }
+        val cp = CriticalPair.of(fun, args)
+        env.folds.find(_.criticalPair embedsInto cp) match {
+          case None =>
+            // No existing fold has a matching critical path, so we should continue unrolling
+            val fold = Fold(cp, fun.apply(args))
+            val newEnv = env.withFold(fold)
+            val unfoldedTerm = fold.unfoldedFrom.reduce(env.rewriteEnv)
+            val supercompiledTerm = supercompile(newEnv, unfoldedTerm)
+            if (!supercompiledTerm.freeVars.contains(fold.foldVar)) {
+              // If there are no folds we could also be trying to apply then supercompilation has completely failed
+              // and we should just return the original term
+              // TODO remove me if everything is working
+              if (false && env.folds.isEmpty) {
+                fun.apply(args)
               } else {
-                val fixBody = Lam(fold.foldVar :: fold.args, supercompiledTerm)
-                Fix(fixBody, cp.fix.index)
-                  .apply(fold.args.map(Var(_): Term))
-                  .reduce(env.rewriteEnv)
+                supercompiledTerm
               }
-            case Some(fold) =>
-              // We've found a matching critical path, so it's time to ripple
-              val (rippledSkeletons, rippledGoal, rippleSub) = ripple(env, fold.from, term)
-              val successfulRipples = rippledSkeletons
-                .filter(_.isInstanceOf[Var])
-                .map(_ :/ rippleSub)
-                .map(fold.from.unifyLeft)
-                .map(_.getOrElse { throw new AssertionError("Successful ripple was not unifiable with original skeleton")})
-              val result = successfulRipples.foldLeft(rippledGoal :/ rippleSub) { (goal, sub) =>
-                goal.replace(fold.from :/ sub, fold.to :/ sub)
-              }
-              result
-          }
+            } else {
+              val fixBody = Lam(fold.foldVar :: fold.args, supercompiledTerm)
+              Fix(fixBody, cp.fix.index)
+                .apply(fold.args.map(Var(_): Term))
+                .reduce(env.rewriteEnv)
+            }
+          case Some(fold) =>
+            // We've found a matching critical path, so it's time to ripple
+            val (rippledSkeletons, rippledGoal, rippleSub) = ripple(env, fold.from, term)
+            val successfulRipples = rippledSkeletons
+              .filter(_.isInstanceOf[Var])
+              .map(_ :/ rippleSub)
+              .map(fold.from.unifyLeft)
+              .map(_.getOrElse { throw new AssertionError("Successful ripple was not unifiable with original skeleton")})
+            val result = successfulRipples.foldLeft(rippledGoal :/ rippleSub) { (goal, sub) =>
+              goal.replace(fold.from :/ sub, fold.to :/ sub)
+            }
+            // TODO remove me too
+            result
         }
       case AppView(fun, args) if args.nonEmpty =>
         // Constructor or variable function, so supercompile the arguments
@@ -162,6 +130,9 @@ class Supercompiler {
       case leq: Leq =>
         val supercompiledLargerTerm = supercompile(env.invertDirection, leq.largerTerm)
         supercompile(env, leq.smallerTerm) match {
+          case newSmallerTerm if newSmallerTerm =@= supercompiledLargerTerm =>
+            // Useful shortcut
+            Logic.Truth
           case FPPF(fun: Fix, argVars) =>
             // Apply the least-fixed-point rule
             val newSmallerTerm = fun

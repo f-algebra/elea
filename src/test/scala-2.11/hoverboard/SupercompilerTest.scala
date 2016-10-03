@@ -34,14 +34,16 @@ class SupercompilerTest extends TestConfig {
       term"fn ys -> .Cons n ys")
   }
 */
-  "supercompilation" should "be awesome" in { }
+  "supercompilation" should "unfold fixed-points with constructor arguments" in {
+    supercompile(term".app (.Cons a (.Cons b (.Cons c xs))) ys") shouldEqual
+      term".Cons a (.Cons b (.Cons c (.app xs ys)))".reduce
+  }
 
   // All properties in test_properties.hover should pass
   Program
     .prelude
     .loadURL(getClass.getResource("test_properties.hover")).definitions
     .filterKeys(_.startsWith("prop"))
-    .filterKeys(_ == "prop_add_assoc")
     .toSeq.sortBy(_._1)
     .foreach { case (propName, propTerm) =>
       it should s"prove $propName in test_properties.hover" in {

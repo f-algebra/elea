@@ -94,10 +94,10 @@ let drop = fix drop n xs ->
     end ;
 
 let count = fix count n xs ->
-    case xs
+    case[count1] xs
     | .Nil -> .0
     | .Cons x xs' ->
-        case .eq n x
+        case[count2] .eq n x
         | .True -> .Suc (count n xs')
         | .False -> count n xs'
         end

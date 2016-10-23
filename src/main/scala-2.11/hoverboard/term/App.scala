@@ -81,7 +81,7 @@ case class App private(fun: Term, args: NonEmptyList[Term]) extends Term with Fi
       case _ => false
     }
 
-  override def unifyLeft(to: Term): Option[Substitution] =
+  override def unifyLeftUnchecked(to: Term): Option[Substitution] =
     (to, fun) match {
       case (to: App, fun: Var) if to.args.size > args.size =>
         val toArgsRight = to.args.list.takeRight(args.size)
@@ -91,7 +91,7 @@ case class App private(fun: Term, args: NonEmptyList[Term]) extends Term with Fi
           mergedSub <- Substitution(fun.name -> funMatch) ++ argsSub
         } yield mergedSub
       case _ =>
-        super.unifyLeft(to)
+        super.unifyLeftUnchecked(to)
     }
 
   override def replace(from: Term, to: Term): Term =

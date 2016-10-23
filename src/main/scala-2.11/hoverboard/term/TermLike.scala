@@ -14,18 +14,23 @@ abstract class TermLike[This <: TermLike[This]] {
   lazy val freeVars: ISet[Name] =
     ISet.unions(immediateSubtermsWithBindings.map { case (bs, t) => t.freeVars.difference(bs) }.toList)
 
-  lazy val indices: ISet[Fix.Index] =
-    ISet.unions(immediateSubterms.map(_.indices).toList)
-
   /**
     * Capture avoiding substitution
     */
   def :/(substitution: Substitution): This
 
+  // TODO work out an example when we need to check the result of this function
   /**
-    * Finds a substitution will yield `to` when applied to this term
+    * Like [[unifyLeft]], but does not check if its result is correct. We need to perform this check in cases such as
+    * ...
     */
-  def unifyLeft(to: This): Option[Substitution]
+  def unifyLeftUnchecked(other: This): Option[Substitution]
+
+  /**
+    * Discover a substitution which which yield `to` when applied to `this`.
+    */
+  final def unifyLeft(to: This): Option[Substitution] =
+    unifyLeftUnchecked(to).filter { sub => (this :/ sub) != this }
 
   /**
     * All of the sub-terms directly contained in `This`.
@@ -128,7 +133,7 @@ abstract class TermLike[This <: TermLike[This]] {
     * Alpha equality
     */
   def =@=(other: This): Boolean =
-    this unifyLeft other match {
+    this unifyLeftUnchecked other match {
       case Some(sub) => sub.isEmpty
       case None => false
     }

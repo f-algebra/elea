@@ -1,20 +1,29 @@
 package hoverboard
 
+import hoverboard.Supercompiler.Env
 import hoverboard.term._
+
+import scalaz.IList
 
 class SupercompilerTest extends TestConfig {
 
   import Util._
 
+  val ripplingOnly = new Supercompiler {
+    override def supercompile(env: Env, term: Term): Term = term
+  }
+
   val supercompiler = new Supercompiler
   import supercompiler._
 
   def testRipple(skeleton: Term, goal: Term, context: Term): Unit = {
-    val (rippledSkeletons, rippledGoal, rippleSub) = ripple(skeleton.reduce, goal.reduce)
+    val (rippledSkeletons, rippledGoal, rippleSub) =
+      // This is to test rippling only! Don't want to involve supercompilation of sub-ripples
+      ripplingOnly.ripple(skeleton.reduce, goal.reduce)
     rippledSkeletons.toList.foreach(_ shouldBe a [Var])
     context.apply(rippledSkeletons).reduce shouldEqual rippledGoal
   }
-/*
+
   "rippling" should "work for simple examples" in {
     testRipple(
       term".add (.add x y) z",
@@ -27,13 +36,15 @@ class SupercompilerTest extends TestConfig {
       term"fn xs -> .app xs (.Cons x .Nil)")
   }
 
-  it should "work for examples requiring constructor fission" in {
-    testRipple(
-      term".rev (.rev xs)",
-      term".rev (.snoc n (.rev xs2))",
-      term"fn ys -> .Cons n ys")
+  it should "fail for prop_zeno3 shaped example" in {
+    val skel = term".lteq (.count n xs) (.count n (.app xs ys))".reduce
+    val goal = term".lteq (.count n xs') (.count n (.app (.Cons x xs') ys))".reduce
+    val (rippledSkels, rippledGoal, sub) = ripplingOnly.ripple(skel, goal)
+    rippledSkels shouldBe empty
+    rippledGoal should not equal goal
+    (rippledGoal unifyLeft goal) should not be empty
   }
-*/
+
   "supercompilation" should "unfold fixed-points with constructor arguments" in {
     supercompile(term".app (.Cons a (.Cons b (.Cons c xs))) ys") shouldEqual
       term".Cons a (.Cons b (.Cons c (.app xs ys)))".reduce
@@ -44,6 +55,7 @@ class SupercompilerTest extends TestConfig {
     .prelude
     .loadURL(getClass.getResource("test_properties.hover")).definitions
     .filterKeys(_.startsWith("prop"))
+    .filterKeys(_ == "prop_zeno9")
     .toSeq.sortBy(_._1)
     .foreach { case (propName, propTerm) =>
       it should s"prove $propName in test_properties.hover" in {

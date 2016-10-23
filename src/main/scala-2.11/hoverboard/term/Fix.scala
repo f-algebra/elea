@@ -73,16 +73,16 @@ case class Fix(body: Term,
                 case _ =>
                   true
               }
-
-              val isCaseOfSubterm =
-                reduced match {
-                  case reduced: Case =>
-                    args.any(arg => arg == reduced.matchedTerm || arg.freeSubtermSet.contains(reduced.matchedTerm))
-                  case _ => false
-                }
+//              val isCaseOfSubterm =
+//                reduced match {
+//                  case reduced: Case =>
+//                    args.any(arg => arg == reduced.matchedTerm || arg.freeSubtermSet.contains(reduced.matchedTerm))
+//                  case _ => false
+//                }
 
               // TODO remove all this unfolding logic if I can get it working without it
-              if (false && !reduced.isInstanceOf[Case] && wasProductive)
+              // Seems that I can't. Remember the ".lteq (.count n xs) (.count n (.app xs ys))" example!
+              if (!reduced.isInstanceOf[Case] && wasProductive)
                 (reduced :/ (this / body.binding)).reduce(env.havingSeen(originalTerm))
               else
                 super.reduceHeadApp(env, args)
@@ -257,8 +257,6 @@ case class Fix(body: Term,
     strict
   }
 
-  override lazy val indices = super.indices.insert(index)
-
   /**
     * Is fixed-point promoted form
     */
@@ -288,6 +286,8 @@ object Fix {
   def freshOmegaIndex: Index = emptyIndex.freshen.asOmega
   def freshFiniteIndex: Index = emptyIndex.freshen.asFinite
 
-  implicit val fixIndexOrder: Order[Fix.Index] = (x: Index, y: Index) =>
-    x.isFinite ?|? y.isFinite |+| x.name ?|? y.name
+  implicit val fixIndexOrder: Order[Fix.Index] = new Order[Fix.Index] {
+    override def order(x: Index, y: Index): Ordering =
+      x.isFinite ?|? y.isFinite |+| x.name ?|? y.name
+  }
 }

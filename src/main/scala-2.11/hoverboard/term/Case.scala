@@ -43,11 +43,11 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
   override def :/(sub: Substitution): Term =
     Case(matchedTerm :/ sub, branches.map(_ :/ sub), index)
 
-  def unifyLeft(to: Term): Option[Substitution] =
+  override def unifyLeftUnchecked(to: Term): Option[Substitution] =
     to match {
       case to: Case =>
-        val matchedUni = matchedTerm unifyLeft to.matchedTerm
-        Substitution.merge(matchedUni +: branches.fzipWith(to.branches)(_ unifyLeft _).list)
+        val matchedUni = matchedTerm.unifyLeftUnchecked(to.matchedTerm)
+        Substitution.merge(matchedUni +: branches.fzipWith(to.branches)(_ unifyLeftUnchecked _).list)
       case _ => None
     }
 

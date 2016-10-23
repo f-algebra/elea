@@ -54,7 +54,9 @@ class Supercompiler {
 
   // TODO potential optimisation: entire process could fail when critique fails
   def critique(env: Env, skeletons: IList[Term], goal: Term): (IList[Term], Term, Substitution) = {
-    if (skeletons.isEmpty || skeletons.length == 1 && skeletons.toList.head =@= goal) {
+    if (skeletons.isEmpty) {
+      (skeletons, goal, Substitution.empty)
+    } else if (skeletons.length == 1 && skeletons.toList.head =@= goal) {
       val genVar = Name.fresh("χ")
       (IList(Var(genVar)), Var(genVar), goal / genVar)
     } else {
@@ -96,14 +98,7 @@ class Supercompiler {
             val unfoldedTerm = fold.unfoldedFrom.reduce(env.rewriteEnv)
             val supercompiledTerm = supercompile(newEnv, unfoldedTerm)
             if (!supercompiledTerm.freeVars.contains(fold.foldVar)) {
-              // If there are no folds we could also be trying to apply then supercompilation has completely failed
-              // and we should just return the original term
-              // TODO remove me if everything is working
-              if (false && env.folds.isEmpty) {
-                fun.apply(args)
-              } else {
-                supercompiledTerm
-              }
+              supercompiledTerm
             } else {
               val fixBody = Lam(fold.foldVar :: fold.args, supercompiledTerm)
               Fix(fixBody, cp.fix.index)
@@ -117,7 +112,9 @@ class Supercompiler {
               .filter(_.isInstanceOf[Var])
               .map(_ :/ rippleSub)
               .map(fold.from.unifyLeft)
-              .map(_.getOrElse { throw new AssertionError("Successful ripple was not unifiable with original skeleton")})
+              .map(uniSub => uniSub.getOrElse {
+                throw new AssertionError("Successful ripple was not unifiable with original skeleton")
+              })
             val result = successfulRipples.foldLeft(rippledGoal :/ rippleSub) { (goal, sub) =>
               goal.replace(fold.from :/ sub, fold.to :/ sub)
             }

@@ -12,15 +12,15 @@ case class Var(name: Name) extends Term {
 
   override lazy val freeVars = ISet.singleton(name)
 
-  def :/(sub: Substitution): Term =
+  override def :/(sub: Substitution): Term =
     sub.toMap.lookup(name).getOrElse(this)
 
-  def unifyLeft(to: Term): Option[Substitution] =
+  override def unifyLeftUnchecked(to: Term): Option[Substitution] =
     Some(to / name)
 
-  def couplingRule(other: Term) = other.isInstanceOf[Var]
+  override def couplingRule(other: Term) = other.isInstanceOf[Var]
 
-  def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Term = this
+  override def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Term = this
 
   override def toString = name.toString
 

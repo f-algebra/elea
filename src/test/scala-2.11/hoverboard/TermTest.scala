@@ -14,6 +14,10 @@ class TermTest extends TestConfig {
     term"x" :/ term"f x" / "x" shouldBe term"f x"
   }
 
+  it should "correctly merge" in {
+    (term"x" / "y") ++ (term"y" / "x") shouldEqual Substitution(Name("x") -> term"y")
+  }
+
   "constant arguments" should "be detectable" in {
     term"fix f x y z -> case y | .0 -> z | .Suc y' -> .Suc (f x y' z) end"
       .asInstanceOf[Fix].constantArgs shouldEqual IList(.0, 2)
@@ -51,6 +55,10 @@ class TermTest extends TestConfig {
     term".Suc y" == term"f y" shouldBe false
   }
 
+  it should "respect variable bindings" in {
+    term"fn y -> x" == term"fn x -> x" shouldBe false
+  }
+
   it should "imply alpha equality" in {
     forAll { (t1: Term, t2: Term) =>
       whenever (!(t1 =@= t2)) {
@@ -70,6 +78,11 @@ class TermTest extends TestConfig {
         t1 unifyLeft (t1 :/ (t2 / x)) shouldEqual Some(t2 / x)
       }
     }
+  }
+
+  it should "respect bindings" in {
+    term"fn x -> y" unifyLeft term"fn y -> x" shouldEqual None
+    term"case a | Suc x -> y end" unifyLeft term"case b | Suc y -> x end" shouldEqual None
   }
 
   "zipping a term with itself" should "yield its subterms" in {

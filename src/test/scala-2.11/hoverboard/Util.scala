@@ -9,6 +9,18 @@ import Scalaz._
 
 object Util {
 
+  implicit def IListEquality[A](implicit innerEq: Equality[A]) = new Equality[IList[A]] {
+    override def areEqual(a: IList[A], b: Any): Boolean =
+      (a, b) match {
+        case (ICons(a, as), ICons(b, bs)) =>
+          innerEq.areEqual(a, b) && areEqual(as, bs)
+        case (INil(), INil()) =>
+          true
+        case _ =>
+          false
+      }
+  }
+
   implicit object TermAlphaEqModuloIndices extends Equality[Term] {
     override def areEqual(a: Term, b: Any): Boolean =
       b match {

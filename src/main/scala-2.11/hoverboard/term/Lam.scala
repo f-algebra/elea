@@ -25,10 +25,11 @@ case class Lam(binding: Name, body: Term) extends Term {
       avoidCapture(newSub.freeVars).mapImmediateSubterms(_ :/ newSub).asInstanceOf[Lam]
   }
 
-  def unifyLeft(to: Term): Option[Substitution] =
+  def unifyLeftUnchecked(to: Term): Option[Substitution] =
     to match {
       case Lam(otherBinding, otherBody) =>
-        body.unifyLeft(otherBody :/ (Var(binding) / otherBinding))
+        (body unifyLeftUnchecked (otherBody :/ (Var(binding) / otherBinding)))
+          .filterNot(_.boundVars.contains(binding))
       case _ =>
         None
     }

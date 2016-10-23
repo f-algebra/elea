@@ -10,8 +10,8 @@ trait FirstOrder[This <: TermLike[This]] extends TermLike[This] {
   override def :/(sub: Substitution): This =
     mapImmediateSubterms(_ :/ sub)
 
-  override def unifyLeft(to: This): Option[Substitution] =
-    zip(to).flatMap(zipped => Substitution.merge(zipped.map(z => z._1.unifyLeft(z._2))))
+  override def unifyLeftUnchecked(to: This): Option[Substitution] =
+    zip(to).flatMap(zipped => Substitution.merge(zipped.map(z => z._1.unifyLeftUnchecked(z._2))))
 
   override def couplingRule(other: This): Boolean =
     zip(other) match {

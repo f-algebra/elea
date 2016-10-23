@@ -62,8 +62,8 @@ final case class Context private(gap: Name, context: Term) extends TermLike[Cont
   override def :/(substitution: Substitution): Context =
     copy(context = context :/ substitution)
 
-  override def unifyLeft(to: Context): Option[Substitution] =
-    context unifyLeft (to.context :/ Var(gap) / to.gap)
+  override def unifyLeftUnchecked(to: Context): Option[Substitution] =
+    context unifyLeftUnchecked (to.context :/ Var(gap) / to.gap)
 
   override def order(other: Context): Ordering =
     (gap ?|? other.gap) |+| (context ?|? other.context)

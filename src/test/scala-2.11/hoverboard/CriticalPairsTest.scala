@@ -23,13 +23,13 @@ class CriticalPairsTest extends TestConfig {
       term".add (.add x y) z",
       CriticalPath.invert(term"x", "add", "add"), term".add x y")
 
-    testCriticalPair(
-      term".add (.Suc x) y",
-      CriticalPath.invert(term".Suc (.add x y)".reduce))
-
-    testCriticalPair(
-      term".add (.Suc (.Suc x)) y",
-      CriticalPath.invert(term".Suc (.add (.Suc x) y)".reduce))
+//    testCriticalPair(
+//      term".add (.Suc x) y",
+//      CriticalPath.invert(term".Suc (.add x y)".reduce))
+//
+//    testCriticalPair(
+//      term".add (.Suc (.Suc x)) y",
+//      CriticalPath.invert(term".Suc (.add (.Suc x) y)".reduce))
 
     testCriticalPair(
       term".rev (.rev xs)",

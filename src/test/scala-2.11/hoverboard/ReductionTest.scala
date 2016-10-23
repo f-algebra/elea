@@ -77,9 +77,6 @@ class ReductionTest extends TestConfig {
     term".add (.Suc x) y".reduce shouldEqual term".Suc (.add x y)".reduce
     term".rev (.Cons x xs)".reduce shouldEqual term".app (.rev xs) (.Cons x .Nil)".reduce
     term".add .0 (.add x y)".reduce shouldEqual term".add x y".reduce
-
-    term".count n (.Cons x xs)".reduce shouldEqual
-      term"case .eq n x | .True -> .Suc (.count n xs) | .False -> .count n xs end".reduce
   }
 
   it should "not unfold fixed points with constructor arguments dangerously" in {
@@ -87,10 +84,6 @@ class ReductionTest extends TestConfig {
     term".lteq (.Suc x) x".reduce shouldEqual term".lteq (.Suc x) x"
     term".isSorted (.Cons x xs)".reduce shouldEqual term".isSorted (.Cons x xs)"
     term".isSorted (.Cons x (.insert n xs))".reduce shouldEqual term".isSorted (.Cons x ${term".insert n xs".reduce})"
-  }
-
-  it should "not add fixed-point indices" in {
-    forAll { (t: Term) => t.reduce.indices.isSubsetOf(t.indices) shouldBe true }
   }
 
   it should "rewrite fixed-points called with ⊥ as strict arguments" in {

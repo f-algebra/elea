@@ -110,11 +110,13 @@ class Supercompiler {
             val (rippledSkeletons, rippledGoal, rippleSub) = ripple(env, fold.from, term)
             val successfulRipples = rippledSkeletons
               .filter(_.isInstanceOf[Var])
-              .map(_ :/ rippleSub)
-              .map(fold.from.unifyLeft)
-              .map(uniSub => uniSub.getOrElse {
-                throw new AssertionError("Successful ripple was not unifiable with original skeleton")
-              })
+              .map { x =>
+                val unrippled = x :/ rippleSub
+                val foldSub = fold.from.unifyLeft(unrippled)
+                foldSub.getOrElse {
+                  throw new AssertionError("Successful ripple was not unifiable with original skeleton")
+                }
+              }
             val result = successfulRipples.foldLeft(rippledGoal :/ rippleSub) { (goal, sub) =>
               goal.replace(fold.from :/ sub, fold.to :/ sub)
             }

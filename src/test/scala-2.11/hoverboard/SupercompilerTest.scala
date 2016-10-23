@@ -55,7 +55,7 @@ class SupercompilerTest extends TestConfig {
     .prelude
     .loadURL(getClass.getResource("test_properties.hover")).definitions
     .filterKeys(_.startsWith("prop"))
-    .filterKeys(_ == "prop_zeno9")
+  //  .filterKeys(_ == "prop_zeno1")
     .toSeq.sortBy(_._1)
     .foreach { case (propName, propTerm) =>
       it should s"prove $propName in test_properties.hover" in {

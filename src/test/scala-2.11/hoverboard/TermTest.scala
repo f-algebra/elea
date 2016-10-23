@@ -15,7 +15,7 @@ class TermTest extends TestConfig {
   }
 
   it should "correctly merge" in {
-    (term"x" / "y") ++ (term"y" / "x") shouldEqual Substitution(Name("x") -> term"y")
+    (term"x" / "y") ++ (term"y" / "x") shouldEqual Some(term"x" / "y")
   }
 
   "constant arguments" should "be detectable" in {
@@ -51,6 +51,10 @@ class TermTest extends TestConfig {
     forAll { (t: Term) => t =@= t shouldEqual true }
   }
 
+  it should "respect bindings" in {
+    term"fn y -> x" =@= term"fn x -> x" shouldBe false
+  }
+
   "term equality" should "correctly fail for this stupid historical bug" in {
     term".Suc y" == term"f y" shouldBe false
   }
@@ -78,11 +82,6 @@ class TermTest extends TestConfig {
         t1 unifyLeft (t1 :/ (t2 / x)) shouldEqual Some(t2 / x)
       }
     }
-  }
-
-  it should "respect bindings" in {
-    term"fn x -> y" unifyLeft term"fn y -> x" shouldEqual None
-    term"case a | Suc x -> y end" unifyLeft term"case b | Suc y -> x end" shouldEqual None
   }
 
   "zipping a term with itself" should "yield its subterms" in {

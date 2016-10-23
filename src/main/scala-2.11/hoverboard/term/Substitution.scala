@@ -5,8 +5,10 @@ import hoverboard.Name
 import scalaz._
 import Scalaz._
 
-case class Substitution private (toMap: IMap[Name, Term]) extends FirstOrder[Substitution] {
-  require(toMap.toList.all(m => Var(m._1) != m._2), "identity substitutions should be pre-filtered")
+class Substitution private (mapping: IMap[Name, Term]) extends FirstOrder[Substitution] {
+
+  val toMap: IMap[Name, Term] =
+    mapping.filterWithKey { (name, term) => Var(name) != term }
 
   override lazy val freeVars = ISet.unions(toMap.values.map(_.freeVars))
 
@@ -72,7 +74,7 @@ case class Substitution private (toMap: IMap[Name, Term]) extends FirstOrder[Sub
   def size: Int = toMap.size
 
   override def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Substitution =
-    copy(toMap = toMap.map(f(ISet.empty, _)))
+    new Substitution(toMap.map(f(ISet.empty, _)))
 
   override def order(other: Substitution): Ordering =
     toMap ?|? other.toMap
@@ -88,11 +90,19 @@ case class Substitution private (toMap: IMap[Name, Term]) extends FirstOrder[Sub
 
   override def toString =
     toMap.toList.map { case (x, t) => s"$x -> $t" } .mkString("\n")
+
+  override def hashCode: Int = toMap.hashCode
+
+  override def equals(obj: Any): Boolean =
+    obj match {
+      case obj: Substitution => toMap == obj.toMap
+      case _ => false
+    }
 }
 
 object Substitution {
   def apply(mapping: (Name, Term)*): Substitution =
-    new Substitution(IList(mapping : _*).filter(m => Var(m._1) != m._2).toMap)
+    new Substitution(IList(mapping : _*).toMap)
 
   def zip(names: IList[Name], terms: IList[Term]): Substitution = {
     require(names.length == terms.length)

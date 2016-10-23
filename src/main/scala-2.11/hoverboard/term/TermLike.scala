@@ -30,7 +30,8 @@ abstract class TermLike[This <: TermLike[This]] {
     * Discover a substitution which which yield `to` when applied to `this`.
     */
   final def unifyLeft(to: This): Option[Substitution] =
-    unifyLeftUnchecked(to).filter { sub => (this :/ sub) != this }
+    unifyLeftUnchecked(to)
+      .filter { sub => (this :/ sub) =@= to }
 
   /**
     * All of the sub-terms directly contained in `This`.

@@ -117,11 +117,15 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
   override def freshen =
     copy(branches = branches.map(_.freshen))
 
-  override def freshenIndices: Case = copy(index = Case.Index.fresh)
+  override def freshenIndices: Term =
+    copy(index = index.freshen)
+      .mapImmediateSubterms(_.freshenIndices)
 }
 
 object Case {
-  sealed trait Index
+  sealed trait Index {
+    def freshen: Index
+  }
 
   object Index {
     def fromName(name: Name): Index = Named(name)
@@ -130,6 +134,7 @@ object Case {
 
     case class Named(name: Name) extends Index  {
       override def toString: String = name.toString
+      override def freshen = copy(name = name.freshen)
     }
   }
 }

@@ -34,6 +34,11 @@ class SupercompilerTest extends TestConfig {
       term".rev (.app xs ys)",
       term".app (.rev (.app xs2 ys)) (.Cons x .Nil)",
       term"fn xs -> .app xs (.Cons x .Nil)")
+
+    testRipple(
+      term".minus (.minus n m) (.Suc y)",
+      term".minus (.minus x' y') (.Suc y)",
+      term"fn x -> x")
   }
 
   it should "fail for prop_zeno3 shaped example" in {
@@ -50,12 +55,17 @@ class SupercompilerTest extends TestConfig {
       term".Cons a (.Cons b (.Cons c (.app xs ys)))".reduce
   }
 
+  it should "simplify" in {
+    val t = supercompile(term".lteq (.count n xs) (.count n (.app xs ys))")
+    true shouldBe true
+  }
+
   // All properties in test_properties.hover should pass
   Program
     .prelude
     .loadURL(getClass.getResource("test_properties.hover")).definitions
     .filterKeys(_.startsWith("prop"))
-  //  .filterKeys(_ == "prop_zeno1")
+//    .filterKeys(_ == "prop_zeno3")
     .toSeq.sortBy(_._1)
     .foreach { case (propName, propTerm) =>
       it should s"prove $propName in test_properties.hover" in {

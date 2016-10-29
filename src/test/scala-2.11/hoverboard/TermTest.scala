@@ -233,6 +233,7 @@ class TermTest extends TestConfig {
   }
 
   "strict args" should "be recognisable" in {
+    term".add x y".reduce.leftmost.asInstanceOf[Fix].strictArgIndices shouldEqual IList(0)
     term".rev".asInstanceOf[Fix].strictArgIndices shouldEqual IList(0)
     term".lt".asInstanceOf[Fix].strictArgIndices shouldEqual IList(0, 1)
   }
@@ -264,5 +265,26 @@ class TermTest extends TestConfig {
     t1 shouldEqual term"f x"
     t2 shouldEqual term"g a"
     xs shouldEqual NonEmptyList(term"y", term"z")
+  }
+
+  "freshenIndices" should "not leave any indices behind" in {
+    forAll { (t: Term) =>
+      t.freshenIndices.caseIndexSet.intersection(t.caseIndexSet) shouldEqual
+        ISet.empty[Case.Index]
+    }
+  }
+
+  it should "not affect equality" in {
+    forAll { (t: Term) =>
+      t.freshenIndices shouldEqual t
+    }
+  }
+
+  "argument subterms" should "contain all arguments" in {
+    // Looks like a weird test but this property broke historically
+    forAll { (ts: Seq[Term]) =>
+      val tss = ISet.unions(ts.toList.map(t => t.freeSubtermSet.insert(t)))
+      ts.foreach(t => tss should contain (t))
+    }
   }
 }

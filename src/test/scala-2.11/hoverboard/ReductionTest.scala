@@ -140,4 +140,9 @@ class ReductionTest extends TestConfig {
     term"fix f x -> case x | .0 -> .True | .Suc x' -> .False end".reduce shouldEqual
       term"fn x -> case x | .0 -> .True | .Suc x' -> .False end"
   }
+
+  it should "apply pattern matches within unfolding" in {
+    term"case .eq n x | .True -> .count n (.Cons x xs) end".reduce shouldEqual
+      term"case .eq n x | .True -> .Suc (.count n xs) end".reduce
+  }
 }

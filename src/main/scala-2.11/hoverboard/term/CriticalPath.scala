@@ -7,7 +7,7 @@ sealed abstract class CriticalPath {
 }
 
 object CriticalPath {
-  def invert(ending: Term, matches: Case.Index*): CriticalPath =
+  def reverse(ending: Term, matches: Case.Index*): CriticalPath =
     matches.foldLeft(Terminal(ending): CriticalPath)((path, idx) => Match(idx, path))
 
   case class Match(index: Case.Index, subPath: CriticalPath) extends CriticalPath {

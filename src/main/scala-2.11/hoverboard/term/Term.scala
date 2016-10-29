@@ -68,7 +68,7 @@ abstract class Term extends TermLike[Term] {
     * Apply beta-reduction as if this term were applied to the given set of arguments
     */
   def betaReduce(args: NonEmptyList[Term]): Term =
-    App(this, args)
+    App(this, args.list)
 
   /**
     * Whether this term homeomorphically embeds into the `other` term.
@@ -150,4 +150,9 @@ abstract class Term extends TermLike[Term] {
   def unfold: Term = this
 
   def =<(other: Term): Leq = Leq(this, other)
+
+  final def caseIndexSet: ISet[Case.Index] =
+    subtermSet.insert(this)
+      .filter(_.isInstanceOf[Case])
+      .map(_.asInstanceOf[Case].index)
 }

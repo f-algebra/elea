@@ -24,7 +24,15 @@ object Arbitraries {
     term"unfold .mul nat_1 nat_2",
     term"case nat_1 | .0 -> nat_2 | .Suc y -> nat_3 end",
     term"f nat_1",
-    term"case bool_1 | .True -> nat_1 | .False -> nat_2 end"
+    term"case bool_1 | .True -> nat_1 | .False -> nat_2 end",
+    term".count nat_1 list_1"
+  )
+
+  private val listTerms = Seq(
+    term".app list_1 list_2",
+    term".rev list_1",
+    term".Nil",
+    term".Cons nat_1 list_1"
   )
 
   private val boolTerms = Seq(
@@ -34,13 +42,20 @@ object Arbitraries {
     term"case nat_1 | .0 -> bool_1 | .Suc y -> bool_2 end"
   )
 
+  private def prefixToGen(name: String): Gen[Term] = {
+    if (name.startsWith("nat_"))
+      natTerm
+    else if (name.startsWith("bool_"))
+      boolTerm
+    else if (name.startsWith("list_"))
+      listTerm
+    else
+      Gen.const(Var(name))
+  }
+
   private def mutateTerm(term: Term): Gen[Term] = for {
     substName <- Gen.oneOf(term.freeVars.toList)
-    substTerm <- substName.name.take(4) match {
-      case "nat_" => natTerm
-      case "bool_" => boolTerm
-      case _ => Gen.const(Var(substName))
-    }
+    substTerm <- prefixToGen(substName.name)
   } yield term :/ substTerm / substName
 
   implicit class GenTermWrapper(gen: Gen[Term]) {
@@ -57,5 +72,6 @@ object Arbitraries {
 
   def natTerm: Gen[Term] = Gen.oneOf(allTerms ++ natTerms).withMutation
   def boolTerm: Gen[Term] = Gen.oneOf(allTerms ++ boolTerms).withMutation
+  def listTerm: Gen[Term] = Gen.oneOf(allTerms ++ listTerms).withMutation
   def term: Gen[Term] = Gen.oneOf(natTerm, boolTerm)
 }

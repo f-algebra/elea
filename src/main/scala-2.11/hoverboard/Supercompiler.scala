@@ -13,17 +13,6 @@ class Supercompiler {
 
   import Supercompiler._
 
-  final private def coupled(
-      skeletonFix: Fix,
-      skeletonArgs: IList[Term],
-      goalFix: Fix,
-      goalArgs: IList[Term]): Boolean = {
-    val skeletonPath = CriticalPair.of(skeletonFix, skeletonArgs).path
-    val goalPath = CriticalPair.of(goalFix, goalArgs).path
-    skeletonArgs.length == goalArgs.length &&
-      skeletonPath.couplesWith(goalPath)
-  }
-
   final private def dive(env: Env, skeleton: Term, goal: Term): (IList[Term], Term, Substitution) = {
     val (rippledSkeletons, rippledGoalSubterms, rippleSubs) = goal.immediateSubterms.map(ripple(env, skeleton, _)).unzip3
     val divedSub = Substitution.unionDisjoint(rippleSubs)
@@ -39,8 +28,10 @@ class Supercompiler {
     (skeleton, goal) match {
       case (skeleton: Var, goal: Var) =>
         (IList(skeleton), skeleton, goal / skeleton.name)
-      case (AppView(skelFix: Fix, skelArgs: IList[Term]), AppView(goalFix: Fix, goalArgs: IList[Term]))
-          if coupled(skelFix, skelArgs, goalFix, goalArgs) =>
+      case (CriticalPair(skelFix: Fix, skelArgs: IList[Term], skelCp),
+            CriticalPair(goalFix: Fix, goalArgs: IList[Term], goalCp))
+        // Critical-path aware coupling
+          if skelArgs.length == goalArgs.length && skelCp.path.couplesWith(goalCp.path) =>
         val (rippledArgSkeletons: IList[IList[Term]], rippledArgGoals: IList[Term], rippledArgSubs: IList[Substitution]) =
           skelArgs.fzipWith(goalArgs)(ripple(env, _, _)).unzip3
         val rippledSkeletons: IList[Term] = (rippledArgSkeletons.sequence: IList[IList[Term]]).map { args => skelFix.apply(args) }
@@ -82,26 +73,25 @@ class Supercompiler {
   }
 
   final def supercompile(term: Term): Term =
-    supercompile(Env.empty, term)
+    supercompile(Env.empty, term.freshenIndices)
 
-  def supercompile(env: Env, term: Term): Term = {
+  protected def supercompile(env: Env, term: Term): Term = {
     term.reduce(env.rewriteEnv) match {
       case FPPF(fun, args) =>
         fun.apply(args.map(Var(_): Term))
-      case AppView(fun: Fix, args) =>
-        val cp = CriticalPair.of(fun, args)
+      case CriticalPair(fun: Fix, args, cp) =>
         env.folds.find(_.criticalPair embedsInto cp) match {
           case None =>
             // No existing fold has a matching critical path, so we should continue unrolling
             val fold = Fold(cp, fun.apply(args))
             val newEnv = env.withFold(fold)
-            val unfoldedTerm = fold.unfoldedFrom.reduce(env.rewriteEnv)
-            val supercompiledTerm = supercompile(newEnv, unfoldedTerm)
+            val expandedTerm = fold.expandedFrom.reduce(env.rewriteEnv)
+            val supercompiledTerm = supercompile(newEnv, expandedTerm)
             if (!supercompiledTerm.freeVars.contains(fold.foldVar)) {
               supercompiledTerm
             } else {
               val fixBody = Lam(fold.foldVar :: fold.args, supercompiledTerm)
-              Fix(fixBody, cp.fix.index)
+              Fix(fixBody, fun.index)
                 .apply(fold.args.map(Var(_): Term))
                 .reduce(env.rewriteEnv)
             }
@@ -144,6 +134,7 @@ class Supercompiler {
         }
       case term: Case =>
         // Descend into the branches of pattern matches
+        // TODO these next two lines should probably be the other way around
         val newBranches = term.branches.map(supercompileBranch(env, term.matchedTerm))
         val newMatchedTerm = supercompile(env, term.matchedTerm)
         val fissionedMatchedTerm = newMatchedTerm match {
@@ -186,15 +177,12 @@ object Supercompiler {
 
   case class Fold (
        criticalPair: CriticalPair,
-       nonReindexedFrom: Term) {
+       from: Term) {
 
     val foldVar: Name = Name.fresh("μ")
-    val index: Fix.Index = criticalPair.fix.index // Fix.freshFiniteIndex
-    val args: IList[Name] = nonReindexedFrom.freeVars.toIList
+    val args: IList[Name] = from.freeVars.toIList
     val to: Term = Var(foldVar).apply(args.map(Var(_): Term))
-    val reindexedFix: Fix = criticalPair.fix.copy(index = index)
-    val from: Term = nonReindexedFrom.replace(criticalPair.term, reindexedFix.apply(criticalPair.args))
-    val unfoldedFrom: Term = nonReindexedFrom.replace(criticalPair.term, reindexedFix.unfold.apply(criticalPair.args))
+    def expandedFrom: Term = C(_ => from).applyToBranches(criticalPair.caseOf)
   }
 
   case class Env(rewriteEnv: rewrite.Env,

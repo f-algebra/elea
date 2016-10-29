@@ -1,0 +1,3 @@
+"(n - m) - k" was a counter to simply unrolling functions, as it would unroll the outer-most fixed-point first,
+and you end up with a pattern match on "n - m". Again, the f/g function notation would fix this issue.
+

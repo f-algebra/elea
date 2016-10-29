@@ -20,10 +20,10 @@ let add = fix add x y -> case[add] x | .0 -> y   | .Suc x' -> .Suc (add x' y) en
 let mul = fix mul x y -> case[mul] x | .0 -> .1 | .Suc x' -> .add y (mul x' y) end ;
 
 let minus = fix minus x y ->
-    case y
+    case[minus1] y
     | .0 -> x
     | .Suc y' ->
-        case x
+        case[minus2] x
         | .0 -> .0
         | .Suc x' -> minus x' y'
         end
@@ -44,10 +44,10 @@ let lt = fix lt x y ->
     end ;
 
 let lteq = fix lteq x y ->
-    case x
+    case[lteq1] x
     | .0 -> .True
     | .Suc x ->
-        case y
+        case[lteq2] y
         | .0 -> .False
         | .Suc y -> lteq x y
         end

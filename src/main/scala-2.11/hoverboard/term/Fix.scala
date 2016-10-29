@@ -14,9 +14,6 @@ case class Fix(body: Term,
                reduced: Boolean = false)
   extends Term with FirstOrder[Term] {
 
-  require(name.isEmpty || freeVars.isEmpty,
-    s"""Cannot name a fixed point with free variables. Name "${name.get}", free variables "$freeVars"""")
-
   override def reduce(env: Env): Term =
     if (reduced)
       this
@@ -49,7 +46,7 @@ case class Fix(body: Term,
     if (strictArgs(args.list).any(_ == Bot)) {
       Bot
     } else {
-      strictArgIndices.find(args.index(_).get.isInstanceOf[Case]) match {
+      strictArgIndices.find(i => i < args.size && args.index(i).get.isInstanceOf[Case]) match {
         case Some(idx) =>
           args.index(idx).get match {
             // If a pattern match is a strict argument to a fixed-point,
@@ -73,12 +70,6 @@ case class Fix(body: Term,
                 case _ =>
                   true
               }
-//              val isCaseOfSubterm =
-//                reduced match {
-//                  case reduced: Case =>
-//                    args.any(arg => arg == reduced.matchedTerm || arg.freeSubtermSet.contains(reduced.matchedTerm))
-//                  case _ => false
-//                }
 
               // TODO remove all this unfolding logic if I can get it working without it
               // Seems that I can't. Remember the ".lteq (.count n xs) (.count n (.app xs ys))" example!
@@ -97,8 +88,11 @@ case class Fix(body: Term,
 
   override def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Term = {
     val newBody = f(ISet.empty, body)
-    if (newBody =@= body) this
-    else Fix(newBody, index)
+    if (newBody =@= body)
+      // Preserve things like `name` if nothing semantically has changed
+      copy(body = newBody)
+    else
+      Fix(newBody, index)
   }
 
   override def toString: String =
@@ -264,8 +258,6 @@ case class Fix(body: Term,
     args.all(_.isInstanceOf[Var]) &&
       args.distinct == args &&
       freeVars.intersection(ISet.unions(args.map(_.freeVars).toList)).isEmpty
-
-  override def freshenIndices: Fix = copy(index = index.freshen)
 }
 
 object Fix {

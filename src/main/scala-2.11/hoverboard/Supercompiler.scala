@@ -28,17 +28,33 @@ class Supercompiler {
     (skeleton, goal) match {
       case (skeleton: Var, goal: Var) =>
         (IList(skeleton), skeleton, goal / skeleton.name)
+
+      case (AppView(skelCon: Constructor, skelArgs: IList[Term]),
+            AppView(goalCon: Constructor, goalArgs: IList[Term]))
+          if skelCon == goalCon && skelArgs.length == goalArgs.length =>
+        val (rippledArgSkeletons: IList[IList[Term]], rippledArgGoals: IList[Term], rippledArgSubs: IList[Substitution]) =
+          skelArgs.fzipWith(goalArgs)(ripple(env, _, _)).unzip3
+        val rippledSkeletons: IList[Term] = rippledArgSkeletons
+          .sequence[({ type G[X] = IList[X] })#G, Term]
+          .map { args => skelCon.apply(args) }
+        val rippledGoal = goalCon.apply(rippledArgGoals)
+        val rippleSub = Substitution.unionDisjoint(rippledArgSubs)
+        (rippledSkeletons, rippledGoal, rippleSub)
+
       case (CriticalPair(skelFix: Fix, skelArgs: IList[Term], skelCp),
             CriticalPair(goalFix: Fix, goalArgs: IList[Term], goalCp))
         // Critical-path aware coupling
           if skelArgs.length == goalArgs.length && skelCp.path.couplesWith(goalCp.path) =>
         val (rippledArgSkeletons: IList[IList[Term]], rippledArgGoals: IList[Term], rippledArgSubs: IList[Substitution]) =
           skelArgs.fzipWith(goalArgs)(ripple(env, _, _)).unzip3
-        val rippledSkeletons: IList[Term] = (rippledArgSkeletons.sequence: IList[IList[Term]]).map { args => skelFix.apply(args) }
+        val rippledSkeletons: IList[Term] = rippledArgSkeletons
+          .sequence[({ type G[X] = IList[X] })#G, Term]
+          .map { args => skelFix.apply(args) }
         val rippledGoal = goalFix.apply(rippledArgGoals)
         val rippleSub = Substitution.unionDisjoint(rippledArgSubs)
         val (critiquedSkeletons, critiquedGoal, critiqueSub) = critique(env, rippledSkeletons, rippledGoal)
         (critiquedSkeletons, critiquedGoal, rippleSub ++! critiqueSub)
+
       case _ =>
         dive(env, skeleton, goal)
     }

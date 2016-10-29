@@ -10,7 +10,7 @@ trait TestConfig extends FlatSpec with Matchers with PropertyChecks {
 
     PropertyCheckConfig(
       // TODO remove this low minSuccessful value when at v1.0 and I can be bothered to wait for all the test cases to finish!
-      minSuccessful = 32,
+      minSuccessful = 64,
       workers = 8,
       maxDiscarded = 2000)
 

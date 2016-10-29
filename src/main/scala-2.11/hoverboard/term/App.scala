@@ -70,7 +70,9 @@ case class App private(fun: Term, args: NonEmptyList[Term]) extends Term with Fi
   override def leftmost: Term = fun.leftmost
 
   override def deepBranches: IList[Term] =
-    args.map(_.deepBranches).sequence.map((xs: NonEmptyList[Term]) => App(fun, xs))
+    args.map(_.deepBranches)
+      .sequence[({ type G[X] = IList[X] })#G, Term]
+      .map((xs: NonEmptyList[Term]) => App(fun, xs))
 
   override def unfold: Term =
     fun.unfold.betaReduce(args)

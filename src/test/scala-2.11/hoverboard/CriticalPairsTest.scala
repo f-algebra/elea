@@ -7,6 +7,8 @@ import scalaz.IList
 
 class CriticalPairsTest extends TestConfig {
 
+  import Util._
+
   def testCriticalPair(term: Term, expectedPath: CriticalPath, expectedMatchedTerm: Term): Unit = {
     val AppView(fix: Fix, args) = term.reduce
     val cp = CriticalPair.of(fix, args)

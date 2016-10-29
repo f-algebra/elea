@@ -56,7 +56,7 @@ class SupercompilerTest extends TestConfig {
   }
 
   it should "simplify" in {
-    val t = supercompile(term".lteq (.count n xs) (.count n (.app xs ys))")
+    val t = supercompile(term".minus (.minus n m) k")
     true shouldBe true
   }
 

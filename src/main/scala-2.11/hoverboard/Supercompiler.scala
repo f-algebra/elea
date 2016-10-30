@@ -91,6 +91,37 @@ class Supercompiler {
   final def supercompile(term: Term): Term =
     supercompile(Env.empty, term.freshenIndices)
 
+  /**
+    * Supercompile a term whose sub-terms have already been supercompiled
+    */
+  private def supercompileHead(env: Env, term: Term): Term =
+    term match {
+      case Leq(smallerTerm, largerTerm) if smallerTerm =@= largerTerm =>
+          Logic.Truth
+      case Leq(FPPF(fix, args), largerTerm) =>
+        // Apply the least-fixed-point rule
+        val newSmallerTerm = fix
+          .body
+          .betaReduce(NonEmptyList(Lam(args, largerTerm)))
+          .apply(args.map(Var(_): Term))
+        supercompile(env, Leq(newSmallerTerm, largerTerm))
+      case Leq(smallerTerm: Case, largerTerm) =>
+        val newBranches: NonEmptyList[Branch] = smallerTerm.branches.map {
+          case branch: DefaultBranch =>
+            branch.copy(body = supercompileHead(env, Leq(branch.body, largerTerm)))
+          case branch: PatternBranch =>
+            val freshBranch = branch.avoidCapture(env.bindingsSet.union(smallerTerm.matchedTerm.freeVars))
+            val newBody = Leq(freshBranch.body, largerTerm)
+            val compiledBody = supercompileHead(env.withMatch(smallerTerm.matchedTerm, branch.pattern), newBody)
+            branch.copy(body = compiledBody)
+        }
+        smallerTerm
+          .copy(branches = newBranches)
+          .reduce(env.rewriteEnv)
+      case other =>
+        other
+    }
+
   protected def supercompile(env: Env, term: Term): Term = {
     term.reduce(env.rewriteEnv) match {
       case FPPF(fun, args) =>
@@ -133,25 +164,19 @@ class Supercompiler {
         // Constructor or variable function, so supercompile the arguments
         App(fun, args.map(supercompile(env, _)))
       case leq: Leq =>
-        val supercompiledLargerTerm = supercompile(env.invertDirection, leq.largerTerm)
-        supercompile(env, leq.smallerTerm) match {
-          case newSmallerTerm if newSmallerTerm =@= supercompiledLargerTerm =>
-            // Useful shortcut
-            Logic.Truth
-          case FPPF(fun: Fix, argVars) =>
-            // Apply the least-fixed-point rule
-            val newSmallerTerm = fun
-              .body
-              .betaReduce(NonEmptyList(Lam(argVars, supercompiledLargerTerm)))
-              .apply(argVars.map(Var(_): Term))
-            supercompile(env, Leq(newSmallerTerm, supercompiledLargerTerm))
-          case newSmallerTerm =>
-            Leq(newSmallerTerm, supercompiledLargerTerm).reduce(env.rewriteEnv)
-        }
+        val compiledLargerTerm = supercompile(env.invertDirection, leq.largerTerm)
+        val compiledSmallerTerm = supercompile(env, leq.smallerTerm)
+        supercompileHead(env, Leq(compiledSmallerTerm, compiledLargerTerm))
       case term: Case =>
         // Descend into the branches of pattern matches
         // TODO these next two lines should probably be the other way around
-        val newBranches = term.branches.map(supercompileBranch(env, term.matchedTerm))
+        val newBranches: NonEmptyList[Branch] = term.branches.map {
+          case branch: DefaultBranch =>
+            branch.copy(body = supercompile(env, branch.body))
+          case branch: PatternBranch =>
+            val freshBranch = branch.avoidCapture(env.bindingsSet.union(term.matchedTerm.freeVars))
+            freshBranch.copy(body = supercompile(env.withMatch(term.matchedTerm, freshBranch.pattern), freshBranch.body))
+        }
         val newMatchedTerm = supercompile(env, term.matchedTerm)
         val fissionedMatchedTerm = newMatchedTerm match {
           case AppView(matchFix: Fix, matchArgs) =>
@@ -164,26 +189,11 @@ class Supercompiler {
           case _ =>
             newMatchedTerm
         }
-        term.copy(
-          branches = newBranches,
-          matchedTerm = fissionedMatchedTerm)
-          .reduce(env.rewriteEnv)
-      case term =>
         term
-    }
-  }
-
-  /**
-    * Supercompile the body of a pattern match branch,
-    * safely (without variable capture) adding the matched pattern into the environment
-    */
-  final def supercompileBranch(env: Env, matchedTerm: Term)(branch: Branch): Branch = {
-    branch match {
-      case branch: DefaultBranch =>
-        branch.copy(body = supercompile(env, branch.body))
-      case branch: PatternBranch =>
-        val freshBranch = branch.avoidCapture(env.bindingsSet.union(matchedTerm.freeVars))
-        branch.copy(body = supercompile(env.withMatch(matchedTerm, branch.pattern), branch.body))
+          .copy(branches = newBranches, matchedTerm = fissionedMatchedTerm)
+          .reduce(env.rewriteEnv)
+      case other =>
+        other
     }
   }
 }

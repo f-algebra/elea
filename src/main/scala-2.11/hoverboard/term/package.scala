@@ -20,4 +20,6 @@ package object term {
     Order.orderBy { case Case.Index.Named(name) => name }
 
   implicit def stringToCaseIndex(name: String): Case.Index = Case.Index.fromName(Name(name))
+
+
 }

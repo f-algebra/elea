@@ -230,6 +230,7 @@ class TermTest extends TestConfig {
     term".add x x".reduce.asInstanceOf[App].isFPPF shouldBe false
     term".add (.mul x y) z".reduce.asInstanceOf[App].isFPPF shouldBe false
     term".add x (.mul y z)".reduce.asInstanceOf[App].isFPPF shouldBe true
+    term".minus n m".reduce.asInstanceOf[App].isFPPF shouldBe true
   }
 
   "strict args" should "be recognisable" in {

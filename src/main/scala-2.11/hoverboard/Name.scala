@@ -8,10 +8,12 @@ import scala.collection.mutable
   */
 case class Name private(name: String, freshener: Option[Int]) {
   def freshen: Name = {
-    assert(freshener.isEmpty || Name.latestFresheners.contains(name))
-    val latestFreshener = Name.latestFresheners.getOrElse(name, 0)
-    Name.latestFresheners.put(name, latestFreshener + 1)
-    Name(name, Some(latestFreshener))
+    Name.latestFresheners.synchronized {
+      assert(freshener.isEmpty || Name.latestFresheners.contains(name))
+      val latestFreshener = Name.latestFresheners.getOrElse(name, 0)
+      Name.latestFresheners.put(name, latestFreshener + 1)
+      Name(name, Some(latestFreshener))
+    }
   }
 
   override def toString =

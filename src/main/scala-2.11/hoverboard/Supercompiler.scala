@@ -169,15 +169,14 @@ class Supercompiler {
         supercompileHead(env, Leq(compiledSmallerTerm, compiledLargerTerm))
       case term: Case =>
         // Descend into the branches of pattern matches
-        // TODO these next two lines should probably be the other way around
+        val newMatchedTerm = supercompile(env, term.matchedTerm)
         val newBranches: NonEmptyList[Branch] = term.branches.map {
           case branch: DefaultBranch =>
             branch.copy(body = supercompile(env, branch.body))
           case branch: PatternBranch =>
-            val freshBranch = branch.avoidCapture(env.bindingsSet.union(term.matchedTerm.freeVars))
-            freshBranch.copy(body = supercompile(env.withMatch(term.matchedTerm, freshBranch.pattern), freshBranch.body))
+            val freshBranch = branch.avoidCapture(env.bindingsSet.union(newMatchedTerm.freeVars))
+            freshBranch.copy(body = supercompile(env.withMatch(newMatchedTerm, freshBranch.pattern), freshBranch.body))
         }
-        val newMatchedTerm = supercompile(env, term.matchedTerm)
         val fissionedMatchedTerm = newMatchedTerm match {
           case AppView(matchFix: Fix, matchArgs) =>
             matchFix.fissionConstructorContext(matchArgs) match {

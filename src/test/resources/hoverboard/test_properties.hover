@@ -45,3 +45,52 @@ let prop_zeno9 =
 
 let prop_zeno10 =
     .minus n n =< .0 ;
+
+let prop_zeno11 =
+    .drop .0 xs == xs ;
+
+let prop_zeno12 =
+    .drop n (.map f xs) == .map f (.drop n xs) ;
+
+let prop_zeno13 =
+    .drop (.Suc n) (.Cons x xs) == .drop n xs ;
+
+let prop_zeno14 =
+    .filter p (.app xs ys) == .app (.filter p xs) (.filter p ys) ;
+
+let prop_zeno15 =
+    .length (.insert n xs) =< .Suc (.length xs) ;
+
+let prop_zeno16 =
+    assert .True <- .null xs in .last (.Cons x xs) == x ;
+
+let prop_zeno17 =
+    assert .True <- .lteq n .0 in n == .0 ;
+
+let prop_zeno18 =
+    .lt n (.Suc (.add n m)) =< .True ;
+
+let prop_zeno19 =
+    .length (.drop n xs) == .minus (.length xs) n ;
+
+let prop_zeno20 =
+    .length (.insertsort xs) =< .length xs ;
+
+let prop_zeno21 =
+    .lteq n (add n m) =< .True ;
+
+let prop_zeno22 =
+    .max (.max n m) k == .max n (.max m k) ;
+
+let prop_zeno24 =
+    assert .True <- .eq (.max n m) n in .lteq m n =< .True ;
+
+let prop_zeno25 =
+    assert .True <- .eq (.max n m) m in .lteq n m =< .True ;
+
+let prop_zeno26 =
+    assert .True <- .elem n xs in .elem n (.app xs ys) =< .True ;
+
+let prop_zeno27 =
+    assert .True <- .elem n ys in .elem n (.app xs ys) =< .True ;
+

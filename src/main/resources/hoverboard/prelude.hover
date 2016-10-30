@@ -19,6 +19,26 @@ let and = fn p q -> case p | .False -> .False | .True -> q end ;
 let add = fix add x y -> case[add] x | .0 -> y   | .Suc x' -> .Suc (add x' y) end ;
 let mul = fix mul x y -> case[mul] x | .0 -> .1 | .Suc x' -> .add y (mul x' y) end ;
 
+let max = fix max x y ->
+    case x
+    | .0 -> y
+    | .Suc x' ->
+      case y
+      | .0 -> x
+      | .Suc y' -> .Suc (max x' y')
+      end
+    end ;
+
+let min = fix min x y ->
+    case x
+    | .0 -> .0
+    | .Suc x' ->
+      case y
+      | .0 -> .0
+      | .Suc y' -> .Suc (min x' y')
+      end
+    end ;
+
 let minus = fix minus x y ->
     case[minus1] y
     | .0 -> x
@@ -113,10 +133,43 @@ let filter = fix filter p xs ->
         end
     end ;
 
+let elem = fix elem n xs ->
+    case xs
+    | .Nil -> .False
+    | .Cons x xs' ->
+      case .eq n x
+      | .True -> .True
+      | .False -> elem n xs'
+      end
+    end ;
+
+let map = fix map f xs ->
+    case xs
+    | .Nil -> .Nil
+    | .Cons x xs' ->
+      .Cons (f x) (map f xs')
+    end ;
+
 let length = fix length xs ->
     case xs
     | .Nil -> .0
     | .Cons x xs' -> .Suc (length xs')
+    end ;
+
+let null = fn xs ->
+    case xs
+    | .Nil -> .True
+    | .Cons x xs' -> .False
+    end ;
+
+let last = fix last xs ->
+    case xs
+    | .Nil -> _|_
+    | .Cons x xs' ->
+      case xs'
+      | .Nil -> x
+      | .Cons x' xs'' -> last xs'
+      end
     end ;
 
 let snoc = fn y -> fix snoc xs ->

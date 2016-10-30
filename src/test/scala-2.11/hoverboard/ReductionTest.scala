@@ -77,6 +77,7 @@ class ReductionTest extends TestConfig {
     term".add (.Suc x) y".reduce shouldEqual term".Suc (.add x y)".reduce
     term".rev (.Cons x xs)".reduce shouldEqual term".app (.rev xs) (.Cons x .Nil)".reduce
     term".add .0 (.add x y)".reduce shouldEqual term".add x y".reduce
+    term".lteq (.Suc n) (.add (.Suc n) m)".reduce shouldEqual term".lteq n (.add n m)".reduce
   }
 
   it should "not unfold fixed points with constructor arguments dangerously" in {

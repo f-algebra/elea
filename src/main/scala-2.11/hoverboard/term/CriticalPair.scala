@@ -1,20 +1,31 @@
 package hoverboard.term
 
 import hoverboard._
-import scalaz.{ISet, IList}
 
-// TODO get rid of terminal for now, it's pointless since you know Zeno doesn't need it,
-// might be needed for co-induction though
+import scalaz.{ICons, IList, ISet}
+
 // Also, you can make fix indices unique thingies now, since it's just used for the coupling check
 
 case class CriticalPair(
-  path: CriticalPath,
-  caseOf: Case) {
+  path: IList[Case.Index],
+  action: CriticalPair.Action) {
 
-  def :/(sub: Substitution) = copy(path = path :/ sub)
+  def isCaseSplit: Boolean = action.isInstanceOf[CriticalPair.CaseSplit]
+
+  def :/(sub: Substitution): CriticalPair =
+    copy(action = action :/ sub)
 
   def extendPathWithMatch(idx: Case.Index): CriticalPair =
-    copy(path = CriticalPath.Match(idx, path))
+    copy(path = idx :: path)
+
+  /**
+    * Are the first elements of the two critical paths equal to each other
+    */
+  def couplesWith(other: CriticalPair): Boolean =
+    (path, other.path) match {
+      case (ICons(x, _), ICons(y, _)) => x == y
+      case _ => false
+    }
 
   /**
     * Check whether the path of this pair is a sub-path of the path of an`other` pair.
@@ -25,31 +36,61 @@ case class CriticalPair(
 }
 
 object CriticalPair {
-  def of(fix: Fix, args: IList[Term]): Option[CriticalPair] = {
+  def of(fix: Fix, args: IList[Term]): CriticalPair = {
     val fixVar = Name.fresh("f")
-    val fixArgSubterms = ISet.unions(args.toList.map(arg => arg.freeSubtermSet.insert(arg)))
+    val fixArgSubterms = ISet
+      .unions(args.toList.map(arg => arg.freeSubtermSet.insert(arg)))
       .toList
-      .filter(_.leftmost.isInstanceOf[Fix])
     val cp = fix.body.apply(Var(fixVar) :: args).reduce match {
-      case term: Case
-          if term.matchedTerm.leftmost.isInstanceOf[Fix] &&
-            fixArgSubterms.exists(_ =@= term.matchedTerm) =>
-        val AppView(matchFun: Fix, matchArgs: IList[Term]) = term.matchedTerm
-        of(matchFun, matchArgs)
-          .map(_.extendPathWithMatch(term.index))
+      case term: Case if fixArgSubterms.exists(_ =@= term.matchedTerm) =>
+        term.matchedTerm match {
+          case AppView(matchFix: Fix, matchArgs: IList[Term]) =>
+            CriticalPair
+              .of(matchFix, matchArgs)
+              .extendPathWithMatch(term.index)
+          case _ =>
+            CriticalPair
+              .induction(term)
+              .extendPathWithMatch(term.index)
+        }
       case term: Case =>
-        Some(CriticalPair(CriticalPath.Terminal(term.matchedTerm), term))
-            .map(_.extendPathWithMatch(term.index))
-      case _ => None
+        CriticalPair
+          .caseSplit(term)
+          .extendPathWithMatch(term.index)
+      case _ =>
+        throw new IllegalArgumentException(s"Term does not have critical pair: ${fix.apply(args)}")
     }
-    cp.map(_ :/ fix / fixVar)
+    cp :/ (fix / fixVar)
   }
 
   def unapply(term: Term): Option[(Fix, IList[Term], CriticalPair)] =
     term match {
-      case AppView(fix: Fix, args) =>
-        CriticalPair.of(fix, args).map((fix, args, _))
+      case AppView(fix: Fix, args) if fix.argCount == args.length =>
+        Some(fix, args, CriticalPair.of(fix, args))
       case _ =>
         None
     }
+
+  sealed trait Action {
+    def :/(sub: Substitution): Action
+
+    /**
+      * Convenience method which I'll remove after implementing fixed-point induction
+      */
+    def caseOf: Case
+  }
+
+  case class Induction private(caseOf: Case) extends Action {
+    def :/(sub: Substitution) = copy(caseOf = caseOf :/ sub)
+  }
+
+  case class CaseSplit private(caseOf: Case) extends Action {
+    def :/(sub: Substitution) = copy(caseOf = caseOf :/ sub)
+  }
+
+  def induction(caseOf: Case): CriticalPair =
+    CriticalPair(IList.empty, Induction(caseOf))
+
+  def caseSplit(caseOf: Case): CriticalPair =
+    CriticalPair(IList.empty, CaseSplit(caseOf))
 }

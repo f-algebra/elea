@@ -2,7 +2,6 @@ package hoverboard
 
 import hoverboard.term._
 
-import scala.annotation.tailrec
 import scalaz.Scalaz._
 import scalaz._
 
@@ -44,7 +43,7 @@ class Supercompiler {
       case (CriticalPair(skelFix: Fix, skelArgs: IList[Term], skelCp),
             CriticalPair(goalFix: Fix, goalArgs: IList[Term], goalCp))
         // Critical-path aware coupling
-          if skelArgs.length == goalArgs.length && skelCp.path.couplesWith(goalCp.path) =>
+          if skelArgs.length == goalArgs.length && skelCp.couplesWith(goalCp) =>
         val (rippledArgSkeletons: IList[IList[Term]], rippledArgGoals: IList[Term], rippledArgSubs: IList[Substitution]) =
           skelArgs.fzipWith(goalArgs)(ripple(env, _, _)).unzip3
         val rippledSkeletons: IList[Term] = rippledArgSkeletons
@@ -132,9 +131,11 @@ class Supercompiler {
             // No existing fold has a matching critical path, so we should continue unrolling
             val fold = Fold(cp, fun.apply(args))
             val newEnv = env.withFold(fold)
-            val expandedTerm = fold.expandedFrom.reduce(env.rewriteEnv)
+            val expandedTerm = C(_ => fold.from)
+              .applyToBranches(cp.action.caseOf)
+              .reduce(env.rewriteEnv)
             val supercompiledTerm = supercompile(newEnv, expandedTerm)
-            if (!supercompiledTerm.freeVars.contains(fold.foldVar)) {
+            if (cp.isCaseSplit || !supercompiledTerm.freeVars.contains(fold.foldVar)) {
               supercompiledTerm
             } else {
               val fixBody = Lam(fold.foldVar :: fold.args, supercompiledTerm)
@@ -142,6 +143,8 @@ class Supercompiler {
                 .apply(fold.args.map(Var(_): Term))
                 .reduce(env.rewriteEnv)
             }
+          case Some(fold) if fold.criticalPair.isCaseSplit =>
+            term
           case Some(fold) =>
             // We've found a matching critical path, so it's time to ripple
             val (rippledSkeletons, rippledGoal, rippleSub) = ripple(env, fold.from, term)
@@ -207,7 +210,6 @@ object Supercompiler {
     val foldVar: Name = Name.fresh("μ")
     val args: IList[Name] = from.freeVars.toIList
     val to: Term = Var(foldVar).apply(args.map(Var(_): Term))
-    def expandedFrom: Term = C(_ => from).applyToBranches(criticalPair.caseOf)
   }
 
   case class Env(rewriteEnv: rewrite.Env,

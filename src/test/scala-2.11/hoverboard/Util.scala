@@ -9,15 +9,6 @@ import Scalaz._
 
 object Util {
 
-  implicit object CriticalPathEquality extends Equality[CriticalPath] {
-    override def areEqual(a: CriticalPath, b: Any): Boolean =
-      b match {
-        case b: CriticalPath =>
-          (a embedsInto b) && (b embedsInto a)
-        case _ => false
-      }
-  }
-
   implicit def IListEquality[A](implicit innerEq: Equality[A]) = new Equality[IList[A]] {
     override def areEqual(a: IList[A], b: Any): Boolean =
       (a, b) match {

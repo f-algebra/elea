@@ -40,7 +40,7 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
       .applyToBranches(this)
       .reduceIgnoringMatchedTerm(env)
 
-  override def :/(sub: Substitution): Term =
+  override def :/(sub: Substitution): Case =
     Case(matchedTerm :/ sub, branches.map(_ :/ sub), index)
 
   override def unifyLeftUnchecked(to: Term): Option[Substitution] =

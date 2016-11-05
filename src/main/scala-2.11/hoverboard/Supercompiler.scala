@@ -58,6 +58,21 @@ class Supercompiler {
         dive(env, skeleton, goal)
     }
 
+  def proveLeq(env: Env, leftTerm: Term, rightTerm: Term): Boolean =
+    supercompile(env, Leq(leftTerm, rightTerm)) == Logic.Truth
+
+  def critiqueUsingInvention(env: Env, skeletons: IList[Term], goalFun: Fix, goalArgs: IList[Term]): (IList[Term], Term, Substitution) = {
+    lazy val failure = (skeletons, goalFun.apply(goalArgs), Substitution.empty)
+    val goal = goalFun.apply(goalArgs)
+    if (skeletons.length == 1 &&
+        proveLeq(env, goal, skeletons.headOption.get)) {
+      val genVar = Name.fresh("χ(eq)")
+      (IList(Var(genVar)), Var(genVar), skeletons.headOption.get / genVar)
+    } else {
+      failure
+    }
+  }
+
   // TODO potential optimisation: entire process could fail when critique fails
   def critique(env: Env, skeletons: IList[Term], goal: Term): (IList[Term], Term, Substitution) = {
     if (skeletons.isEmpty) {
@@ -78,7 +93,7 @@ class Supercompiler {
                 val (critiquedSkels, critiquedGoal, critiqueSub) = critique(env.havingSeen(goal), skeletons, newGoal)
                 (critiquedSkels, fissionedCtx.apply(critiquedGoal), critiqueSub)
               case None =>
-                failure
+                critiqueUsingInvention(env, skeletons, goalFun, goalArgs)
             }
           case _ =>
             failure

@@ -53,5 +53,9 @@ class CriticalPairsTest extends TestConfig {
     testCriticalPair(
       term".lteq (.count n xs) (.count n (.app xs ys))",
       IList("lteq1", "count1"), term"xs")
+
+    testCriticalPair(
+      term".delete n (.Cons x xs')",
+      IList("delete2"), term".eq n x")
   }
 }

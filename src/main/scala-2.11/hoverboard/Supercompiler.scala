@@ -61,7 +61,7 @@ class Supercompiler {
   def proveLeq(env: Env, leftTerm: Term, rightTerm: Term): Boolean =
     supercompile(env, Leq(leftTerm, rightTerm)) == Logic.Truth
 
-  def critiqueUsingInvention(env: Env, skeletons: IList[Term], goalFun: Fix, goalArgs: IList[Term]): (IList[Term], Term, Substitution) = {
+  def critiqueByInvention(env: Env, skeletons: IList[Term], goalFun: Fix, goalArgs: IList[Term]): (IList[Term], Term, Substitution) = {
     lazy val failure = (skeletons, goalFun.apply(goalArgs), Substitution.empty)
     val goal = goalFun.apply(goalArgs)
     if (skeletons.length == 1 &&
@@ -88,12 +88,12 @@ class Supercompiler {
         supercompile(env, goal) match {
           case AppView(goalFun: Fix, goalArgs) if env.rewriteDirection.canIncrease =>
             goalFun.fissionConstructorContext match {
-              case Some((fissionedCtx, fissionedFix)) =>
+              case Some((fissionedCtx, fissionedFix)) if env.rewriteDirection.canIncrease =>
                 val newGoal = fissionedFix.apply(goalArgs)
                 val (critiquedSkels, critiquedGoal, critiqueSub) = critique(env.havingSeen(goal), skeletons, newGoal)
                 (critiquedSkels, fissionedCtx.apply(critiquedGoal), critiqueSub)
               case None =>
-                critiqueUsingInvention(env, skeletons, goalFun, goalArgs)
+                critiqueByInvention(env, skeletons, goalFun, goalArgs)
             }
           case _ =>
             failure

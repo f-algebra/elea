@@ -46,7 +46,7 @@ object Parser {
     val White = WhitespaceApi.Wrapper(whitespace)
     import White._
 
-    val keywords = Set("fix", "fn", "case", "of", "else", "let", "end", "unfold", "assert", "false", "true", "not", "in")
+    val keywords = Set("fix", "fn", "case", "of", "else", "data", "let", "end", "rec", "unfold", "assert", "false", "true", "in")
 
     val lowercase = P(CharIn('a' to 'z') | CharIn(Seq('_', 'α')))
     val uppercase = P(CharIn('A' to 'Z') | CharIn('0' to '9') | CharIn(Seq('\'')))
@@ -72,7 +72,7 @@ object Parser {
     val bot: P[Term] = P(("_|_" | "⊥") ~/).map(_ => Bot)
     val truth: P[Term] = P("true" ~/).map(_ => Logic.Truth)
     val falsity: P[Term] = P("false" ~/).map(_ => Logic.Falsity)
-    val negation: P[Term] = P("not" ~/ term).map(Logic.not)
+    val negation: P[Term] = P("!" ~/ term).map(Logic.not)
     val binOp: P[BinOp] =
       P("=<").map(_ => BinOp.Leq) |
         P("==").map(_ => BinOp.Eq) |
@@ -112,12 +112,18 @@ object Parser {
       }
     }
 
-    val statement: P[Option[Statement]] = {
-      val termDef: P[Statement] = P("let" ~/ definitionName ~/ "=" ~/ term ~ ";" ~/).map(m => TermDef(m._1, m._2))
-      val conDefs: P[Statement] = P("data" ~/ constructorDef ~ ";" ~/).map(ConstructorDef)
+    val data: P[Statement] = P("data" ~/ constructorDef).map(ConstructorDef)
 
-      P(whitespace ~ (P(termDef | conDefs).map(Some(_)) | P(End).map(_ => None)))
-    }
+    val letrec: P[Statement] = for {
+      (defName, vars, body) <- P("let" ~ "rec" ~/ definitionName ~ varName.rep ~ "=" ~/ term)
+    } yield TermDef(defName, Fix(Lam(NonEmptyList(Name(defName), vars: _*), body), Fix.freshOmegaIndex))
+
+    val let: P[Statement] = for {
+      (defName, vars, body) <- P("let" ~ definitionName ~ varName.rep ~ "=" ~/ term)
+    } yield TermDef(defName, Lam(IList(vars: _*), body))
+
+    val statement: P[Option[Statement]] =
+      P(whitespace ~ (P(data | letrec | let).map(Some(_)) | P(End).map(_ => None)))
   }
 
   /**

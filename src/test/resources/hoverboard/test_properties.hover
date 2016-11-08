@@ -1,96 +1,161 @@
 
 
 let prop_id_nat =
-    (fix f x -> case x | .0 -> .0 | .Suc x' -> .Suc (f x') end) =< fn x -> x ;
+    (fix f x -> case x | .0 -> .0 | .Suc x' -> .Suc (f x') end) =< fn x -> x
 
 let prop_add_is_add =
-    .add x y =< .add x y ;
+    .add x y =< .add x y
 
 let prop_add_assoc =
-    .add (.add x y) z =< .add x (.add y z) ;
+    .add (.add x y) z =< .add x (.add y z)
 
 let prop_revSnoc =
-    .rev (.app xs (.Cons n .Nil)) =< .revSnoc n xs ;
+    .rev (.app xs (.Cons n .Nil)) =< .revSnoc n xs
 
 let prop_rev_self_inverse =
-    .rev (.rev xs) =< xs ;
+    .rev (.rev xs) =< xs
 
 
 let prop_zeno1 =
-    .app (.take n xs) (.drop n xs) =< xs ;
+    .app (.take n xs) (.drop n xs) =< xs
 
 let prop_zeno2 =
-    .add (.count n xs) (.count n ys) == .count n (.app xs ys) ;
+    .add (.count n xs) (.count n ys) == .count n (.app xs ys)
 
 let prop_zeno3 =
-    .lteq (.count n xs) (.count n (.app xs ys)) =< .True ;
+    .lteq (.count n xs) (.count n (.app xs ys)) =< .True
 
 let prop_zeno4 =
-    .count n (.Cons n xs) =< .Suc (.count n xs) ;
+    .count n (.Cons n xs) =< .Suc (.count n xs)
 
 let prop_zeno5 =
-    assert .True <- .eq n m in .Suc (.count n xs) == .count n (.Cons m xs) ;
+    assert .True <- .eq n m in .Suc (.count n xs) == .count n (.Cons m xs)
 
 let prop_zeno6 =
-    .minus n (.add n m) =< .0 ;
+    .minus n (.add n m) =< .0
 
 let prop_zeno7 =
-    .minus (.add n m) n =< m ;
+    .minus (.add n m) n =< m
 
 let prop_zeno8 =
-    .minus (.add k m) (.add k n) =< .minus m n ;
+    .minus (.add k m) (.add k n) =< .minus m n
 
 let prop_zeno9 =
-    .minus (.minus n m) k =< .minus n (.add m k) ;
+    .minus (.minus n m) k =< .minus n (.add m k)
 
 let prop_zeno10 =
-    .minus n n =< .0 ;
+    .minus n n =< .0
 
 let prop_zeno11 =
-    .drop .0 xs == xs ;
+    .drop .0 xs == xs
 
 let prop_zeno12 =
-    .drop n (.map f xs) == .map f (.drop n xs) ;
+    .drop n (.map f xs) == .map f (.drop n xs)
 
 let prop_zeno13 =
-    .drop (.Suc n) (.Cons x xs) == .drop n xs ;
+    .drop (.Suc n) (.Cons x xs) == .drop n xs
 
 let prop_zeno14 =
-    .filter p (.app xs ys) == .app (.filter p xs) (.filter p ys) ;
+    .filter p (.app xs ys) == .app (.filter p xs) (.filter p ys)
 
 let prop_zeno15 =
-    .length (.insert n xs) =< .Suc (.length xs) ;
+    .length (.insert n xs) =< .Suc (.length xs)
 
 let prop_zeno16 =
-    assert .True <- .null xs in .last (.Cons x xs) == x ;
+    assert .True <- .null xs in .last (.Cons x xs) == x
 
 let prop_zeno17 =
-    assert .True <- .lteq n .0 in n == .0 ;
+    assert .True <- .lteq n .0 in n == .0
 
 let prop_zeno18 =
-    .lt n (.Suc (.add n m)) =< .True ;
+    .lt n (.Suc (.add n m)) =< .True
 
 let prop_zeno19 =
-    .length (.drop n xs) == .minus (.length xs) n ;
+    .length (.drop n xs) == .minus (.length xs) n
 
 let prop_zeno20 =
-    .length (.insertsort xs) =< .length xs ;
+    .length (.insertsort xs) =< .length xs
 
 let prop_zeno21 =
-    .lteq n (add n m) =< .True ;
+    .lteq n (.add n m) =< .True
 
 let prop_zeno22 =
-    .max (.max n m) k == .max n (.max m k) ;
+    .max (.max n m) k == .max n (.max m k)
 
 let prop_zeno24 =
-    assert .True <- .eq (.max n m) n in .lteq m n =< .True ;
+    assert .True <- .eq (.max n m) n in .lteq m n =< .True
 
 let prop_zeno25 =
-    assert .True <- .eq (.max n m) m in .lteq n m =< .True ;
+    assert .True <- .eq (.max n m) m in .lteq n m =< .True
 
 let prop_zeno26 =
-    assert .True <- .elem n xs in .elem n (.app xs ys) =< .True ;
+    assert .True <- .elem n xs in .elem n (.app xs ys) =< .True
 
 let prop_zeno27 =
-    assert .True <- .elem n ys in .elem n (.app xs ys) =< .True ;
+    assert .True <- .elem n ys in .elem n (.app xs ys) =< .True
 
+let prop_zeno28 = 
+    .elem n (.app xs (.Cons n .Nil)) =< .True
+    
+let prop_zeno29 = 
+    .elem n (.eq_insert n xs) =< .True
+
+let prop_zeno30 =
+    .elem n (.lt_insert n xs) =< .True
+
+let prop_zeno31 =
+    .min (.min n m) k == .min n (.min m k)
+
+let prop_zeno33 =
+    assert .True <- .eq (.min n m) n in .lteq n m =< .True
+
+let prop_zeno34 =
+    assert .True <- .eq (.min n m) m in .lteq m n =< .True
+
+let prop_zeno35 =
+    .dropWhile (fn x -> .False) xs == xs
+
+let prop_zeno36 =
+    .takeWhile (fn x -> .True) xs == xs
+
+let prop_zeno37 =
+    .not (.elem n (.delete n xs)) =< .True
+
+let prop_zeno38 =
+    .count n (.app xs (.Cons n .Nil)) =< .Suc (.count n xs)
+
+let prop_zeno39 =
+    .add (.count n (.Cons n .Nil)) (.count n xs) == .count n (.Cons x xs)
+
+let prop_zeno40 =
+    .take .0 xs == .Nil
+
+let prop_zeno41 =
+    .take n (.map f xs) == .map f (.take n xs)
+
+let prop_zeno42 =
+    .take (.Suc n) (.Cons x xs) == .Cons x (.take n xs)
+
+let prop_zeno43 =
+    .app (.takeWhile p xs) (.dropWhile p xs) =< xs
+
+let prop_zeno44 =
+    .zip (.Cons x xs) ys =< .zipConcat x xs ys
+
+let prop_zeno45 =
+    .zip (.Cons x xs) (.Cons y ys) == .Cons (.Pair x y) (.zip xs ys)
+
+let prop_zeno46 = .zip .Nil xs == .Nil
+
+let prop_zeno48 =
+    assert .False <- .null xs in
+    .app (.butlast xs) (.Cons (.last xs) .Nil) == xs
+
+let prop_zeno50 =
+    .butlast xs == .take (.minus (.length xs) .1) xs
+
+let prop_zeno51 =
+    .butlast (.app xs (.Cons x .Nil)) =< xs
+
+let prop_zeno54 =
+    .minus (.add m n) n =< m

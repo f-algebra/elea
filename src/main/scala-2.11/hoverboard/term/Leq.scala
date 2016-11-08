@@ -52,7 +52,7 @@ case class Leq(smallerTerm: Term, largerTerm: Term)
   def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Term =
     Leq(f(ISet.empty[Name], smallerTerm), f(ISet.empty[Name], largerTerm))
 
-  override def toString = s"$smallerTerm =< $largerTerm"
+  override def toString = s"($smallerTerm =< $largerTerm)"
 
   def arbitraryOrderingNumber: Int = 6
 

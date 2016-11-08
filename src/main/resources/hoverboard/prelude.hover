@@ -1,25 +1,28 @@
 
-data True;
-data False;
+data True
+data False
 
-data 0;
-data Suc *;
+data 0
+data Suc *
 
-data Nil;
-data Cons _ *;
+data Nil
+data Cons _ *
 
-data Leaf;
-data Node _ * *;
+data Leaf
+data Node _ * *
 
-let 1 = .Suc .0 ;
-let 2 = .Suc .1 ;
+data Pair _ _
 
-let and = fn p q -> case p | .False -> .False | .True -> q end ;
+let 1 = .Suc .0
+let 2 = .Suc .1
 
-let add = fix add x y -> case[add] x | .0 -> y   | .Suc x' -> .Suc (add x' y) end ;
-let mul = fix mul x y -> case[mul] x | .0 -> .1 | .Suc x' -> .add y (mul x' y) end ;
+let and p q = case p | .False -> .False | .True -> q end
+let not p = case p | .True -> .False | .False -> .True end
 
-let max = fix max x y ->
+let rec add x y = case[add] x | .0 -> y   | .Suc x' -> .Suc (add x' y) end
+let rec mul x y = case[mul] x | .0 -> .1 | .Suc x' -> .add y (mul x' y) end
+
+let rec max x y =
     case x
     | .0 -> y
     | .Suc x' ->
@@ -27,9 +30,9 @@ let max = fix max x y ->
       | .0 -> x
       | .Suc y' -> .Suc (max x' y')
       end
-    end ;
+    end
 
-let min = fix min x y ->
+let rec min x y =
     case x
     | .0 -> .0
     | .Suc x' ->
@@ -37,9 +40,9 @@ let min = fix min x y ->
       | .0 -> .0
       | .Suc y' -> .Suc (min x' y')
       end
-    end ;
+    end
 
-let minus = fix minus x y ->
+let rec minus x y =
     case[minus1] y
     | .0 -> x
     | .Suc y' ->
@@ -47,9 +50,9 @@ let minus = fix minus x y ->
         | .0 -> .0
         | .Suc x' -> minus x' y'
         end
-    end ;
+    end
 
-let lt = fix lt x y ->
+let rec lt x y =
     case[lt1] x
     | .0 ->
         case[lt11] y
@@ -61,9 +64,9 @@ let lt = fix lt x y ->
         | .0 -> .False
         | .Suc y -> lt x y
         end
-    end ;
+    end
 
-let lteq = fix lteq x y ->
+let rec lteq x y =
     case[lteq1] x
     | .0 -> .True
     | .Suc x ->
@@ -71,9 +74,9 @@ let lteq = fix lteq x y ->
         | .0 -> .False
         | .Suc y -> lteq x y
         end
-    end ;
+    end
 
-let eq = fix eq x y ->
+let rec eq x y =
     case x
     | .0 ->
         case y
@@ -85,15 +88,15 @@ let eq = fix eq x y ->
         | .0 -> .False
         | .Suc y' -> eq x' y'
         end
-    end ;
+    end
 
-let app = fix app xs ys ->
+let rec app xs ys =
     case[app] xs
     | .Nil -> ys
     | .Cons x xs' -> .Cons x (app xs' ys)
-    end ;
+    end
 
-let take = fix take n xs ->
+let rec take n xs =
     case n
     | .0 -> .Nil
     | .Suc n' ->
@@ -101,9 +104,9 @@ let take = fix take n xs ->
         | .Nil -> .Nil
         | .Cons x xs' -> .Cons x (take n' xs')
         end
-    end ;
+    end
 
-let drop = fix drop n xs ->
+let rec drop n xs =
     case n
     | .0 -> xs
     | .Suc n' ->
@@ -111,9 +114,29 @@ let drop = fix drop n xs ->
         | .Nil -> .Nil
         | .Cons x xs' -> drop n' xs'
         end
-    end ;
+    end
 
-let count = fix count n xs ->
+let rec dropWhile p xs =
+    case xs
+    | .Nil -> .Nil
+    | .Cons x xs' ->
+        case p x
+        | .True -> dropWhile p xs'
+        | .False -> xs
+        end
+    end
+
+let rec takeWhile p xs =
+    case xs
+    | .Nil -> .Nil
+    | .Cons x xs' ->
+        case p x
+        | .True -> .Cons x (takeWhile p xs')
+        | .False -> .Nil
+        end
+    end
+
+let rec count n xs =
     case[count1] xs
     | .Nil -> .0
     | .Cons x xs' ->
@@ -121,9 +144,9 @@ let count = fix count n xs ->
         | .True -> .Suc (count n xs')
         | .False -> count n xs'
         end
-    end ;
+    end
 
-let filter = fix filter p xs ->
+let rec filter p xs =
     case xs
     | .Nil -> .Nil
     | .Cons x xs' ->
@@ -131,9 +154,9 @@ let filter = fix filter p xs ->
         | .True -> .Cons x (filter p xs')
         | .False -> filter p xs'
         end
-    end ;
+    end
 
-let elem = fix elem n xs ->
+let rec elem n xs =
     case xs
     | .Nil -> .False
     | .Cons x xs' ->
@@ -141,58 +164,90 @@ let elem = fix elem n xs ->
       | .True -> .True
       | .False -> elem n xs'
       end
-    end ;
+    end
 
-let map = fix map f xs ->
+let rec map f xs =
     case xs
     | .Nil -> .Nil
     | .Cons x xs' ->
       .Cons (f x) (map f xs')
-    end ;
+    end
 
-let length = fix length xs ->
+let rec length xs =
     case xs
     | .Nil -> .0
     | .Cons x xs' -> .Suc (length xs')
-    end ;
+    end
 
-let null = fn xs ->
+let null xs =
     case xs
     | .Nil -> .True
     | .Cons x xs' -> .False
-    end ;
+    end
 
-let last = fix last xs ->
+let rec last xs =
     case xs
     | .Nil -> _|_
     | .Cons x xs' ->
       case xs'
       | .Nil -> x
-      | .Cons x' xs'' -> last xs'
+      | else -> last xs'
       end
-    end ;
+    end
+
+let rec butlast xs =
+    case xs
+    | .Nil -> .Nil
+    | .Cons x xs' ->
+        case xs'
+        | .Nil -> .Nil
+        | else -> .Cons x (butlast xs')
+        end
+    end
+
+let butlastConcat xs ys =
+    case ys
+    | .Nil -> butlast xs
+    | else -> .app xs (.butlast ys)
+    end
+
+let rec zip xs ys =
+    case xs
+    | .Nil -> .Nil
+    | .Cons x xs' ->
+        case ys
+        | .Nil -> .Nil
+        | .Cons y ys' -> .Cons (.Pair x y) (zip xs' ys')
+        end
+    end
+
+let zipConcat x xs ys =
+    case ys
+    | .Nil -> .Nil
+    | .Cons y ys' -> .Cons (.Pair x y) (.zip xs ys')
+    end
 
 let snoc = fn y -> fix snoc xs ->
     case[snoc] xs
     | .Nil -> .Cons y .Nil
     | .Cons x xs' -> .Cons x (snoc xs')
-    end ;
+    end
 
-let rev = fix rev xs ->
+let rec rev xs =
     case[rev] xs
     | .Nil -> .Nil
     | .Cons x xs' -> .app (rev xs') (.Cons x .Nil)
-    end ;
+    end
 
 let revSnoc = fn y -> fix revSnoc xs ->
     case[revsnoc] xs
     | .Nil -> .Cons y .Nil
     | .Cons x xs' -> .app (revSnoc xs') (.Cons x .Nil)
-    end ;
+    end
 
-let ones = fix ones -> .Cons .1 ones ;
+let rec ones = .Cons .1 ones
 
-let isSorted = fix isSorted xs ->
+let rec isSorted xs =
     case[sorted1] xs
     | .Nil -> .True
     | .Cons x xs' ->
@@ -200,27 +255,57 @@ let isSorted = fix isSorted xs ->
       | .Nil -> .True
       | .Cons y ys -> .and (.lteq x y) (isSorted xs')
       end
-    end ;
+    end
 
-let insert = fix ins n xs ->
+let rec insert n xs =
     case[ins1] xs
     | .Nil -> .Cons n .Nil
     | .Cons x xs' ->
       case[ins2] .lteq n x
       | .True -> .Cons n xs
-      | .False -> .Cons x (ins n xs')
+      | .False -> .Cons x (insert n xs')
       end
-    end ;
+    end
 
-let insertsort = fix isort xs ->
+let rec eq_insert n xs =
+    case xs
+    | .Nil -> .Cons n .Nil
+    | .Cons x xs' ->
+      case .eq n x
+      | .True -> xs
+      | .False -> .Cons x (eq_insert n xs')
+      end
+    end
+
+let rec lt_insert n xs =
+    case xs
+    | .Nil -> .Cons n .Nil
+    | .Cons x xs' ->
+      case .lt n x
+      | .True -> .Cons n xs
+      | .False -> .Cons x (lt_insert n xs')
+      end
+    end
+
+let rec insertsort xs =
     case[isort1] xs
     | .Nil -> .Nil
-    | .Cons x xs' -> .insert x (isort xs')
-    end ;
+    | .Cons x xs' -> .insert x (insertsort xs')
+    end
 
-let flatten = fix flatten t ->
+let rec delete n xs =
+    case[delete1] xs
+    | .Nil -> .Nil
+    | .Cons x xs' ->
+        case[delete2] .eq n x
+        | .True -> delete n xs'
+        | .False -> .Cons x (delete n xs')
+        end
+    end
+
+let rec flatten t =
     case t
     | .Leaf -> .Leaf
     | .Node x t1 t2 ->
       .app (flatten t1) (.Cons x (flatten t2))
-    end ;
+    end

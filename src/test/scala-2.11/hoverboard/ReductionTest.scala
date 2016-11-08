@@ -44,10 +44,22 @@ class ReductionTest extends TestConfig {
   }
 
   it should "remove constant fixed-point arguments" in {
-    term".add".reduce shouldEqual term"fn x y -> (fix f x -> case x | .0 -> y | .Suc x' -> .Suc (f x') end) x"
-    term".app xs (.Cons y .Nil)".reduce shouldEqual term".snoc y xs".reduce
+    term".add".reduce shouldEqual
+      term"fn x y -> (fix f x -> case x | .0 -> y | .Suc x' -> .Suc (f x') end) x"
+
+    term".app xs (.Cons y .Nil)".reduce shouldEqual
+      term".snoc y xs".reduce
+
     term"fix[a] f xs -> case xs | .Nil -> .Nil | .Cons x xs' -> .app (f xs') (.Cons x .Nil) end".reduce shouldEqual
       term"fix[a] f xs -> case xs | .Nil -> .Nil | .Cons x xs' -> .snoc x (f xs') end".reduce
+    term".delete n xs".reduce shouldEqual
+      term"""(fix f xs -> case xs
+             | .Nil -> .Nil
+             | .Cons x xs' ->
+                case .eq n x
+                | .True -> delete xs'
+                | .False -> .Cons x (delete xs')
+            end end) xs"""
   }
 
   it should "not introduce free variables" in {
@@ -125,7 +137,7 @@ class ReductionTest extends TestConfig {
     term"p && true".reduce shouldEqual term"p"
     term"true && p".reduce shouldEqual term"p"
 
-    term"not (not p)".reduce shouldEqual term"p"
+    term"!(!p)".reduce shouldEqual term"p"
   }
 
   it should "simplify pattern matches which always return _|_" in {

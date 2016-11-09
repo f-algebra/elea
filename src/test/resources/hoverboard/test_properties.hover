@@ -159,3 +159,95 @@ let prop_zeno51 =
 
 let prop_zeno54 =
     .minus (.add m n) n =< m
+
+let prop_zeno55 =
+    .app (.drop n xs) (.drop (.minus n (.length xs)) ys)
+        == .drop n (.app xs ys)
+
+let prop_zeno56 =
+    .drop n (.drop m xs) == .drop (.add m n) xs
+
+let prop_zeno59 =
+    assert .True <- .null ys in
+    .last (.app xs ys) =< .last xs
+
+let prop_zeno60 =
+    assert .True <- .not (.null ys) in
+    .last (.app xs ys) =< .last ys
+
+let prop_zeno62 =
+    assert .True <- .not (.null xs) in
+    .last (.Cons x xs) == .last xs
+
+let prop_zeno63 =
+    assert .True <- .lt n (.length xs) in
+    .last (.drop n xs) == .last xs
+
+let prop_zeno64 =
+    .last (.app xs (.Cons x .Nil)) =< x
+
+let prop_zeno65 =
+    .lt n (.Suc (.add m n)) =< .True
+
+/*
+Seems to take forever!
+let prop_zeno66 =
+    .lteq (.length (.filter p xs)) (.length xs) =< .True
+*/
+
+let prop_zeno67 =
+    .length (.butlast xs) =< .minus (.length xs) .1
+
+let prop_zeno68 =
+    .lteq (.length (.delete n xs)) (.length xs)
+
+let prop_zeno69 =
+    .lteq n (.add m n) =< .True
+
+let prop_zeno70 =
+    assert .True <- .lteq m n in
+    .lteq m (.Suc n) =< .True
+
+let prop_zeno71 =
+    assert .True <- .not (.eq n m) in
+    .elem n (.insert m xs) =< .elem n xs
+
+let prop_zeno72 =
+    .rev (.drop n xs) == .take (.minus (.length xs) n) (.rev xs)
+
+let prop_zeno74 =
+    .rev (.take n xs) == .drop (.minus (.length xs) n) (.rev xs)
+
+let prop_zeno76 =
+    assert .True <- .not (.eq n m) in
+    .count n (.app xs (.Cons m .Nil)) =< .count n xs
+
+let prop_zeno77 =
+    assert .True <- .isSorted xs in
+    .isSorted (.insert n xs) =< .True
+
+let prop_zeno78 =
+    .isSorted (.insertsort xs) =< .True
+
+let prop_zeno80 =
+    .app (.take n xs) (.take (.minus n (.length xs)) ys)
+    == .take n (.app xs ys)
+
+let prop_zeno81 =
+    .drop m (.take (.add n m) xs) == .take n (.drop m xs)
+
+let prop_zeno82 =
+    .take n (.zip xs ys) == .zip (.take n xs) (.take n ys)
+
+let prop_zeno83 =
+    .app (.zip xs (.take (.length xs) zs)) (.zip ys (.drop (.length xs) zs))
+    == .zip (.app xs ys) zs
+
+let prop_zeno84 =
+    .app (.zip (.take (.length ys) xs) ys) (.zip (.drop (.length ys) xs) zs)
+    == .zip xs (.app ys zs)
+
+let prop_zeno85 =
+    assert .True <- .eq (.length xs) (.length ys) in
+    .rev (.zip xs ys) == .zip (.rev xs) (.rev ys)
+

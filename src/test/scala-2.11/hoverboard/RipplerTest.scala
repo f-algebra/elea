@@ -7,7 +7,7 @@ class RipplerTest extends TestConfig {
 
   import Util._
 
-  val rippler = new Rippler(new Critiquer(Simplifier.reducer))
+  val rippler = new Rippler(new Critiquer(Simplifier.reduction))
 
   def testRipple(skeleton: Term, goal: Term, context: Term): Unit = {
     val ripple = rippler.run(skeleton.reduce, goal.reduce)

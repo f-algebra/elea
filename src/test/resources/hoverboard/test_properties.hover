@@ -165,7 +165,7 @@ let prop_zeno55 =
         == .drop n (.app xs ys)
 
 let prop_zeno56 =
-    .drop n (.drop m xs) == .drop (.add m n) xs
+    .drop n (.drop m xs) =< .drop (.add m n) xs
 
 let prop_zeno59 =
     assert .True <- .null ys in

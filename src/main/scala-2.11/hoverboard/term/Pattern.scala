@@ -19,3 +19,13 @@ case class Pattern(constructor: Constructor, bindings: IList[Name]) {
     constructor.toString +
       bindings.map(" " + _.toString).concatenate
 }
+
+object Pattern {
+  def from(term: Term) =
+    term match {
+      case AppView(con: Constructor, args: IList[Term]) if args.all(_.isInstanceOf[Var]) =>
+        Pattern(con, args.map(_.asInstanceOf[Var].name))
+      case _ =>
+        throw new AssertionError(s"Cannot match term to a pattern: $term")
+    }
+}

@@ -43,6 +43,8 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
         smallerTerm
           .copy(branches = newBranches)
           .reduce(env)
+      case _ if prover.unsatisfiable(env) =>
+        Bot
       case other =>
         other
     }
@@ -126,6 +128,8 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
         term
           .copy(branches = newBranches, matchedTerm = fissionedMatchedTerm)
           .reduce(env)
+      case _ if prover.unsatisfiable(env) =>
+        Bot
       case other =>
         other
     }

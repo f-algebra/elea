@@ -9,7 +9,7 @@ class SupercompilerTest extends TestConfig {
 
   import Util._
 
-  val scc = Simplifier.supercompiler
+  val scc = Simplifier.supercompilation
 
   "supercompilation" should "unfold fixed-points with constructor arguments" in {
     scc.run(term".app (.Cons a (.Cons b (.Cons c xs))) ys") shouldEqual

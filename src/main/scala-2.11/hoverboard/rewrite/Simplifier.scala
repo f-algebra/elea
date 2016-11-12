@@ -14,15 +14,15 @@ trait Simplifier {
 }
 
 object Simplifier {
-  def supercompiler: Simplifier = {
-    lazy val scc: Simplifier = supercompiler(scc)
+  def supercompilation: Simplifier = {
+    lazy val scc: Simplifier = supercompilation(scc)
     scc
   }
 
-  def supercompiler(internalSimplifier: => Simplifier): Simplifier =
-    new Supercompiler(new Rippler(new Critiquer(internalSimplifier)), new Prover(internalSimplifier))
+  def supercompilation(internalSimplifier: => Simplifier): Simplifier =
+    new Supercompiler(new Rippler(new Critiquer(internalSimplifier)), new Prover(reduction))
 
-  def reducer: Simplifier = new Simplifier {
+  def reduction: Simplifier = new Simplifier {
     override def run(env: Env, term: Term): Term =
       term.reduce(env)
   }

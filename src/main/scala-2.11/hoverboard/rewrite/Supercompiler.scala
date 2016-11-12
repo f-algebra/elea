@@ -50,26 +50,29 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
   private def supercompile(env: Env, folds: IList[Fold], term: Term): Term = {
     term.reduce(env) match {
       case FPPF(fun, args) =>
+        // Job done
         fun.apply(args.map(Var(_): Term))
+
       case CriticalPair(fun: Fix, args, cp) =>
         folds.find(_.criticalPair embedsInto cp) match {
-          case None if !env.alreadySeen(fun.apply(args)) =>
+          case None if !env.alreadySeen(cp.path) =>
             // No existing fold has a matching critical path, so we should continue unrolling
             val fold = Fold(cp, fun.apply(args))
+            val newEnv = env.havingSeen(cp.path)
             val expandedTerm = C(_ => fold.from)
               .applyToBranches(cp.action.caseOf)
-              .reduce(env)
-            val supercompiledTerm = supercompile(env.havingSeen(fold.from), fold :: folds, expandedTerm)
+              .reduce(newEnv)
+            val supercompiledTerm = supercompile(newEnv, fold :: folds, expandedTerm)
             if (cp.isCaseSplit || !supercompiledTerm.freeVars.contains(fold.foldVar)) {
               supercompiledTerm
             } else {
               val fixBody = Lam(fold.foldVar :: fold.args, supercompiledTerm)
               Fix(fixBody, fun.index)
                 .apply(fold.args.map(Var(_): Term))
-                .reduce(env)
+                .reduce(newEnv)
             }
 
-          case Some(fold) if !fold.criticalPair.isCaseSplit=>
+          case Some(fold) if !fold.criticalPair.isCaseSplit =>
             // We've found a matching critical path, so it's time to ripple
             val ripple = rippler.run(env, fold.from, term)
             val successfulRipples = ripple

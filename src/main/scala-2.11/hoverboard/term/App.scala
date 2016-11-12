@@ -26,8 +26,11 @@ case class App private(fun: Term, args: NonEmptyList[Term]) extends Term with Fi
 
   override def reduceHeadCase(env: Env, enclosingCase: Case): Term =
     fun match {
-      case fun: Constructor => fun.reduceCase(args.list, enclosingCase.branches).reduce(env)
-      case _ => super.reduceHeadCase(env, enclosingCase)
+      case fun: Constructor if !env.alreadySeen(enclosingCase) =>
+        fun.reduceCase(args.list, enclosingCase.branches)
+          .reduce(env.havingSeen(enclosingCase))
+      case _ =>
+        super.reduceHeadCase(env, enclosingCase)
     }
 
   private def flatten: App =

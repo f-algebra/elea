@@ -1,14 +1,15 @@
 package hoverboard.rewrite
 
-import hoverboard.Name
-import hoverboard.term.{Pattern, Term, UMap}
+import hoverboard._
+import hoverboard.term.{Case, Pattern, Term, UMap}
 
-import scalaz._
+import scalaz.{Name => _, _}
 import Scalaz._
 
 case class Env(rewriteDirection: Direction,
                matches: UMap[Term, Pattern],
-               history: IList[Term]) {
+               termHistory: IList[Term],
+               pathHistory: IList[IList[Case.Index]]) {
   def invertDirection: Env =
     copy(rewriteDirection = rewriteDirection.invert)
 
@@ -16,10 +17,16 @@ case class Env(rewriteDirection: Direction,
     copy(matches = matches + (term -> pattern))
 
   def alreadySeen(term: Term) =
-    history.any(_ embedsInto term)
+    termHistory.any(_ embedsInto term)
+
+  def alreadySeen(criticalPath: IList[Case.Index]) =
+    pathHistory.any(_ embedsInto criticalPath)
 
   def havingSeen(term: Term): Env =
-    copy(history = term :: history)
+    copy(termHistory = term :: termHistory)
+
+  def havingSeen(criticalPath: IList[Case.Index]): Env =
+    copy(pathHistory = criticalPath :: pathHistory)
 
   def withBindings(bindings: ISet[Name]): Env =
     copy(matches = matches.filterKeys { t =>
@@ -31,5 +38,5 @@ case class Env(rewriteDirection: Direction,
 }
 
 object Env {
-  val empty = Env(Direction.Increasing, UMap.empty, IList.empty)
+  val empty = Env(Direction.Increasing, UMap.empty, IList.empty, IList.empty)
 }

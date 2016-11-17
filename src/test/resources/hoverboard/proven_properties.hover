@@ -12,35 +12,38 @@ let prop_add_assoc =
 let prop_revSnoc =
     .rev (.app xs (.Cons n .Nil)) =< .revSnoc n xs
 
-let prop_rev_self_inverse =
+let prop_rev_id_left =
     .rev (.rev xs) =< xs
 
 
-let prop_zeno1 =
+let prop_zeno1_left =
     .app (.take n xs) (.drop n xs) =< xs
 
-let prop_zeno2 =
-    .add (.count n xs) (.count n ys) == .count n (.app xs ys)
+let prop_zeno2_left =
+    .add (.count n xs) (.count n ys) =< .count n (.app xs ys)
 
-let prop_zeno3 =
+let prop_zeno2_right =
+    .add (.count n xs) (.count n ys) >= .count n (.app xs ys)
+
+let prop_zeno3_left =
     .lteq (.count n xs) (.count n (.app xs ys)) =< .True
 
-let prop_zeno4 =
+let prop_zeno4_left =
     .count n (.Cons n xs) =< .Suc (.count n xs)
 
 let prop_zeno5 =
     assert .True <- .eq n m in .Suc (.count n xs) == .count n (.Cons m xs)
 
-let prop_zeno6 =
+let prop_zeno6_left =
     .minus n (.add n m) =< .0
 
-let prop_zeno7 =
+let prop_zeno7_left =
     .minus (.add n m) n =< m
 
-let prop_zeno8 =
+let prop_zeno8_left =
     .minus (.add k m) (.add k n) =< .minus m n
 
-let prop_zeno9 =
+let prop_zeno9_left =
     .minus (.minus n m) k =< .minus n (.add m k)
 
 let prop_zeno10 =
@@ -81,6 +84,9 @@ let prop_zeno21 =
 
 let prop_zeno22 =
     .max (.max n m) k == .max n (.max m k)
+
+let prop_zeno23 =
+    .max n m =< .max m n
 
 let prop_zeno24 =
     assert .True <- .eq (.max n m) n in .lteq m n =< .True
@@ -147,9 +153,13 @@ let prop_zeno45 =
 
 let prop_zeno46 = .zip .Nil xs == .Nil
 
-let prop_zeno48 =
+let prop_zeno48_left =
     assert .False <- .null xs in
-    .app (.butlast xs) (.Cons (.last xs) .Nil) == xs
+    .app (.butlast xs) (.Cons (.last xs) .Nil) =< xs
+
+let prop_zeno48_right =
+    assert .False <- .null xs in
+    .app (.butlast xs) (.Cons (.last xs) .Nil) >= xs
 
 let prop_zeno50 =
     .butlast xs == .take (.minus (.length xs) .1) xs

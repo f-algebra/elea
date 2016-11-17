@@ -33,6 +33,9 @@ case class Env(rewriteDirection: Direction,
       t.freeVars.intersection(bindings).isEmpty
     })
 
+  def clearHistory: Env =
+    copy(termHistory = IList.empty, pathHistory = IList.empty)
+
   def bindingsSet: ISet[Name] =
     ISet.unions(matches.toSeq.map(m => m._1.freeVars.union(m._2.bindingsSet)).toList)
 }

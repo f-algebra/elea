@@ -1,3 +1,7 @@
+/*
+A file of properties which are false, which we use to test whether Taxi can
+prove anything it shouldn't be able to.
+*/
 
 let prop_cons_mismatch = .0 =< .Nil
 
@@ -11,4 +15,39 @@ let prop_mul_commutative = .mul n m =< .mul m n
 
 let prop_add_commutative = .add n m =< .add m n
 
-let prop_rev_rev_id = xs =< .rev (.rev xs)
+let prop_rev_rev_id_right = .rev (.rev xs) >= xs
+
+
+let prop_zeno1_right =
+    .app (.take n xs) (.drop n xs) >= xs
+
+let prop_zeno3_right =
+    .lteq (.count n xs) (.count n (.app xs ys)) >= .True
+
+let prop_zeno4_right =
+    .count n (.Cons n xs) >= .Suc (.count n xs)
+
+let prop_zeno6_right=
+    .minus n (.add n m) >= .0
+
+let prop_zeno7_right =
+    .minus (.add n m) n >= m
+
+let prop_zeno8_right =
+    .minus (.add k m) (.add k n) >= .minus m n
+
+let prop_zeno9_right =
+    .minus (.minus n m) k >= .minus n (.add m k)
+
+let prop_zeno52_left =
+    .count n xs =< .count n (.rev xs)
+
+let prop_zeno52_right =
+    .count n xs >= .count n (.rev xs)
+
+let prop_zeno53_left =
+    .count n (.insertsort xs) =< .count n xs
+
+let prop_zeno53_right =
+    .count n (.insertsort xs) >= .count n xs
+

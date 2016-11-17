@@ -19,14 +19,14 @@ class SupercompilerTest extends TestConfig {
     true shouldBe true
   }
 
-  // All properties in provable_properties.hover should pass
+  // All properties in proven_properties.hover should pass
   Program
     .prelude
-    .loadURL(getClass.getResource("provable_properties.hover")).definitions
+    .loadURL(getClass.getResource("proven_properties.hover")).definitions
     .filterKeys(_.startsWith("prop"))
     .toSeq.sortBy(_._1)
     .foreach { case (propName, propTerm) =>
-      it should s"prove $propName in provable_properties.hover" in {
+      it should s"prove $propName in proven_properties.hover" in {
         val propNameVar = propName
         scc.run(propTerm) shouldEqual Logic.Truth
       }

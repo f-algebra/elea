@@ -22,16 +22,9 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
   private def supercompileHead(env: Env, folds: IList[Fold], term: Term): Term =
     term match {
       case Leq(smallerTerm, largerTerm) if smallerTerm =@= largerTerm =>
-          Logic.Truth
-      case Leq(FPPF(fix, args), largerTerm) if !env.alreadySeen(term) =>
-        // Apply the least-fixed-point rule
-        val newSmallerTerm = fix
-          .body
-          .betaReduce(NonEmptyList(Lam(args, largerTerm)))
-          .apply(args.map(Var(_): Term))
-        val newLeq = Leq(newSmallerTerm, largerTerm).reduce
-        supercompile(env.havingSeen(term), IList.empty, newLeq)
-      case Leq(smallerTerm: Case, largerTerm) =>
+        Logic.Truth
+
+      case Leq(smallerTerm: Case, largerTerm) if env.rewriteDirection.canIncrease =>
         val newBranches: NonEmptyList[Branch] = smallerTerm.branches.map {
           case branch: DefaultBranch =>
             branch.copy(body = supercompileHead(env, folds, Leq(branch.body, largerTerm)))
@@ -43,7 +36,44 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
         }
         smallerTerm
           .copy(branches = newBranches)
-          .reduce
+          .reduce(env.clearHistory)
+
+      case Leq(smallerTerm, largerTerm: Case) if env.rewriteDirection.canDecrease =>
+        val newBranches: NonEmptyList[Branch] = largerTerm.branches.map {
+          case branch: DefaultBranch =>
+            branch.copy(body = supercompileHead(env, folds, Leq(smallerTerm, branch.body)))
+          case branch: PatternBranch =>
+            val freshBranch = branch.avoidCapture(env.bindingsSet.union(largerTerm.matchedTerm.freeVars))
+            val newBody = Leq(smallerTerm, freshBranch.body)
+            val compiledBody = supercompileHead(env.withMatch(largerTerm.matchedTerm, branch.pattern), folds, newBody)
+            branch.copy(body = compiledBody)
+        }
+        largerTerm
+          .copy(branches = newBranches)
+          .reduce(env.clearHistory)
+
+      case Leq(FPPF(fix, args), largerTerm)
+          if !env.alreadySeen(term) && (env.rewriteDirection.canIncrease || fix.isProductive) =>
+        // Apply the least-fixed-point rule
+        val newSmallerTerm = fix
+          .body
+          .betaReduce(NonEmptyList(Lam(args, largerTerm)))
+          .apply(args.map(Var(_): Term))
+        val newLeq = Leq(newSmallerTerm, largerTerm).reduce(env.clearHistory)
+        val result = supercompile(env.havingSeen(term), IList.empty, newLeq)
+        result
+
+      case Leq(smallerTerm, FPPF(fix, args))
+          if !env.alreadySeen(term) && (env.rewriteDirection.canDecrease || fix.isProductive) =>
+        // The least fixed-point rule can be applied backwards for well-founded fixed-points
+        val newLargerTerm = fix
+          .body
+          .betaReduce(NonEmptyList(Lam(args, smallerTerm)))
+          .apply(args.map(Var(_): Term))
+        val newLeq = Leq(smallerTerm, newLargerTerm).reduce(env.clearHistory)
+        val result = supercompile(env.havingSeen(term), IList.empty, newLeq)
+        result
+
       case _ if prover.unsatisfiable(env) =>
         Bot
       case other =>
@@ -51,7 +81,7 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
     }
 
   private def supercompile(env: Env, folds: IList[Fold], term: Term): Term = {
-    term.reduce match {
+    term.reduce(env.clearHistory) match {
       case FPPF(fun, args) =>
         // Job done
         fun.apply(args.map(Var(_): Term))
@@ -64,15 +94,16 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
             val newEnv = env.havingSeen(cp.path)
             val expandedTerm = C(_ => fold.from)
               .applyToBranches(cp.action.caseOf)
-              .reduce
+              .reduce(env.clearHistory)
             val supercompiledTerm = supercompile(newEnv, fold :: folds, expandedTerm)
             if (cp.isCaseSplit || !supercompiledTerm.freeVars.contains(fold.foldVar)) {
               supercompiledTerm
             } else {
               val fixBody = Lam(fold.foldVar :: fold.args, supercompiledTerm)
-              Fix(fixBody, fun.index)
+              val result = Fix(fixBody, fun.index)
                 .apply(fold.args.map(Var(_): Term))
-                .reduce
+                .reduce(env.clearHistory)
+              result
             }
 
           case Some(fold) if !fold.criticalPair.isCaseSplit =>
@@ -91,7 +122,6 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
             val result = successfulRipples.foldLeft(ripple.goal :/ ripple.generalisation) { (goal, sub) =>
               goal.replace(fold.from :/ sub, fold.to :/ sub)
             }
-            // TODO debug line pls remove
             result
 
           case _ =>
@@ -128,7 +158,7 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
         }
         term
           .copy(branches = newBranches, matchedTerm = fissionedMatchedTerm)
-          .reduce
+          .reduce(env.clearHistory)
       case _ if prover.unsatisfiable(env) =>
         Bot
       case other =>

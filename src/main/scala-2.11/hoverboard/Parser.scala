@@ -28,6 +28,7 @@ object Parser {
   private object BinOp {
 
     case object Leq extends BinOp
+    case object Geq extends BinOp
     case object Eq extends BinOp
     case object And extends BinOp
     case object Or extends BinOp
@@ -75,15 +76,19 @@ object Parser {
     val negation: P[Term] = P("!" ~/ term).map(Logic.not)
     val binOp: P[BinOp] =
       P("=<").map(_ => BinOp.Leq) |
+        P(">=").map(_ => BinOp.Geq) |
         P("==").map(_ => BinOp.Eq) |
         P("&&").map(_ => BinOp.And) |
         P("||").map(_ => BinOp.Or)
     val prop: P[Term] = P(app ~ binOp ~/ term).map { m =>
+      val left = m._1
+      val right = m._3
       m._2 match {
-        case BinOp.Leq => Leq(m._1, m._3)
-        case BinOp.Eq => Logic.equality(m._1, m._3)
-        case BinOp.And => Logic.and(m._1, m._3)
-        case BinOp.Or => Logic.or(m._1, m._3)
+        case BinOp.Leq => Leq(left, right)
+        case BinOp.Geq => Leq(right, left)
+        case BinOp.Eq => Logic.equality(left, right)
+        case BinOp.And => Logic.and(left, right)
+        case BinOp.Or => Logic.or(left, right)
       }
     }
     val assertion: P[Case] = P("assert" ~/ pattern ~ "<-" ~/ term ~ "in" ~/ term).map {

@@ -157,16 +157,6 @@ let prop_zeno48_left =
     assert .False <- .null xs in
     .app (.butlast xs) (.Cons (.last xs) .Nil) =< xs
 
-let prop_zeno48_right =
-    assert .False <- .null xs in
-    .app (.butlast xs) (.Cons (.last xs) .Nil) >= xs
-
-let prop_zeno50 =
-    .butlast xs == .take (.minus (.length xs) .1) xs
-
-let prop_zeno51 =
-    .butlast (.app xs (.Cons x .Nil)) =< xs
-
 let prop_zeno54 =
     .minus (.add m n) n =< m
 
@@ -189,24 +179,8 @@ let prop_zeno62 =
     assert .True <- .not (.null xs) in
     .last (.Cons x xs) == .last xs
 
-let prop_zeno63 =
-    assert .True <- .lt n (.length xs) in
-    .last (.drop n xs) == .last xs
-
 let prop_zeno64 =
     .last (.app xs (.Cons x .Nil)) =< x
-
-let prop_zeno65 =
-    .lt n (.Suc (.add m n)) =< .True
-
-let prop_zeno66 =
-    .lteq (.length (.filter p xs)) (.length xs) =< .True
-
-let prop_zeno67 =
-    .length (.butlast xs) =< .minus (.length xs) .1
-
-let prop_zeno68 =
-    .lteq (.length (.delete n xs)) (.length xs)
 
 let prop_zeno69 =
     .lteq n (.add m n) =< .True
@@ -222,17 +196,6 @@ let prop_zeno71 =
 let prop_zeno76 =
     assert .True <- .not (.eq n m) in
     .count n (.app xs (.Cons m .Nil)) =< .count n xs
-
-let prop_zeno77 =
-    assert .True <- .isSorted xs in
-    .isSorted (.insert n xs) =< .True
-
-let prop_zeno78 =
-    .isSorted (.insertsort xs) =< .True
-
-let prop_zeno80 =
-    .app (.take n xs) (.take (.minus n (.length xs)) ys)
-    == .take n (.app xs ys)
 
 let prop_zeno82 =
     .take n (.zip xs ys) == .zip (.take n xs) (.take n ys)

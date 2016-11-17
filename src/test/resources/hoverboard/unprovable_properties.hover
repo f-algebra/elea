@@ -39,6 +39,10 @@ let prop_zeno8_right =
 let prop_zeno9_right =
     .minus (.minus n m) k >= .minus n (.add m k)
 
+let prop_zeno48_right =
+    assert .False <- .null xs in
+    .app (.butlast xs) (.Cons (.last xs) .Nil) >= xs
+
 let prop_zeno52_left =
     .count n xs =< .count n (.rev xs)
 

@@ -44,7 +44,6 @@ class SupercompilerTest extends TestConfig {
       }
     }
 
-
   // All properties in unproven_properties.hover should fail, but if they ever pass it's a good thing!
   Program
     .prelude

@@ -1,14 +1,74 @@
+/*
+Properties which are true, but which hoverboard cannot prove yet.
+I run them through my unit tests so I can catch when I add the power to successfully prove them.
+*/
 
+let prop_zeno72_left =
+    .rev (.drop n xs) =< .take (.minus (.length xs) n) (.rev xs)
 
-let prop_zeno72 =
-    .rev (.drop n xs) == .take (.minus (.length xs) n) (.rev xs)
+let prop_zeno74_left =
+    .rev (.take n xs) =< .drop (.minus (.length xs) n) (.rev xs)
 
-let prop_zeno74 =
-    .rev (.take n xs) == .drop (.minus (.length xs) n) (.rev xs)
+let prop_zeno72_right =
+    .rev (.drop n xs) >= .take (.minus (.length xs) n) (.rev xs)
 
-let prop_zeno81 =
-    .drop m (.take (.add n m) xs) == .take n (.drop m xs)
+let prop_zeno74_right =
+    .rev (.take n xs) >= .drop (.minus (.length xs) n) (.rev xs)
 
-let prop_zeno85 =
+let prop_zeno81_left =
+    .drop m (.take (.add n m) xs) =< .take n (.drop m xs)
+
+let prop_zeno81_right =
+    .drop m (.take (.add n m) xs) >= .take n (.drop m xs)
+
+let prop_zeno85_left =
     assert .True <- .eq (.length xs) (.length ys) in
-    .rev (.zip xs ys) == .zip (.rev xs) (.rev ys)
+    .rev (.zip xs ys) =< .zip (.rev xs) (.rev ys)
+
+let prop_zeno85_right =
+    assert .True <- .eq (.length xs) (.length ys) in
+    .rev (.zip xs ys) >= .zip (.rev xs) (.rev ys)
+
+let prop_zeno65 =
+    .lt n (.Suc (.add m n)) =< .True
+
+let prop_zeno66 =
+    .lteq (.length (.filter p xs)) (.length xs) =< .True
+
+let prop_zeno67 =
+    .length (.butlast xs) =< .minus (.length xs) .1
+
+let prop_zeno68 =
+    .lteq (.length (.delete n xs)) (.length xs) =< .True
+
+let prop_zeno77 =
+    assert .True <- .isSorted xs in
+    .isSorted (.insert n xs) =< .True
+
+let prop_zeno78 =
+    .isSorted (.insertsort xs) =< .True
+
+let prop_zeno50_left =
+    .butlast xs =< .take (.minus (.length xs) .1) xs
+
+let prop_zeno50_right =
+    .butlast xs >= .take (.minus (.length xs) .1) xs
+
+let prop_zeno51 =
+    .butlast (.app xs (.Cons x .Nil)) =< xs
+
+let prop_zeno63_left =
+    assert .True <- .lt n (.length xs) in
+    .last (.drop n xs) =< .last xs
+
+let prop_zeno80_left =
+    .app (.take n xs) (.take (.minus n (.length xs)) ys)
+    =< .take n (.app xs ys)
+
+let prop_zeno63_right =
+    assert .True <- .lt n (.length xs) in
+    .last (.drop n xs) >= .last xs
+
+let prop_zeno80_right =
+    .app (.take n xs) (.take (.minus n (.length xs)) ys)
+    >= .take n (.app xs ys)

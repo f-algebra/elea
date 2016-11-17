@@ -17,7 +17,7 @@ case class App private(fun: Term, args: NonEmptyList[Term]) extends Term with Fi
       .lookup(reduced)
       // Even though this is a constructor we should re-reduce in case any of its
       // free vars has been matched to something
-      .map(_.asTerm.reduce(env.havingSeen(this)))
+      .map(_.asTerm.reduce(env))
       .getOrElse(reduced)
   }
 

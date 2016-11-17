@@ -191,7 +191,7 @@ let rec last xs =
     | .Cons x xs' ->
       case xs'
       | .Nil -> x
-      | else -> last xs'
+      | .Cons x' xs'' -> last xs'
       end
     end
 
@@ -201,14 +201,14 @@ let rec butlast xs =
     | .Cons x xs' ->
         case xs'
         | .Nil -> .Nil
-        | else -> .Cons x (butlast xs')
+        | .Cons x' xs'' -> .Cons x (butlast xs')
         end
     end
 
 let butlastConcat xs ys =
     case ys
     | .Nil -> butlast xs
-    | else -> .app xs (.butlast ys)
+    | .Cons y ys' -> .app xs (.butlast ys)
     end
 
 let rec zip xs ys =

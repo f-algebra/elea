@@ -76,6 +76,7 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
 
       case _ if prover.unsatisfiable(env) =>
         Bot
+
       case other =>
         other
     }
@@ -91,7 +92,9 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
           case None if !env.alreadySeen(cp.path) =>
             // No existing fold has a matching critical path, so we should continue unrolling
             val fold = Fold(cp, fun.apply(args))
-            val newEnv = env.havingSeen(cp.path)
+            val newEnv = env
+              .havingSeen(cp.path)    // Store this critical path so it can be matched on later to apply folding
+              .clearMatches           // It is unsound to apply pattern matches from outside supercompilation, within the supercompilation step
             val expandedTerm = C(_ => fold.from)
               .applyToBranches(cp.action.caseOf)
               .reduce(env.clearHistory)

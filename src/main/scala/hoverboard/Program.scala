@@ -1,9 +1,7 @@
 package hoverboard
 
+import hoverboard.term._
 import java.net.URL
-
-import hoverboard.term.Term
-
 import scala.io.Source
 
 /** Collection of term definitions */

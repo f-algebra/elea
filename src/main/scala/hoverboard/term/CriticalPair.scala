@@ -1,6 +1,6 @@
 package hoverboard.term
 
-import hoverboard._
+import hoverboard.Name
 
 import scalaz.{ICons, IList, ISet}
 

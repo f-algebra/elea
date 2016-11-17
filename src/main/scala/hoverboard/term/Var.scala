@@ -3,7 +3,7 @@ package hoverboard.term
 import hoverboard.Name
 import hoverboard.rewrite.Env
 
-import scalaz._
+import scalaz.{Name => _, _}
 import Scalaz._
 
 case class Var(name: Name) extends Term {

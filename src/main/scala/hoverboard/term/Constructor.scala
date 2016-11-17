@@ -1,6 +1,6 @@
 package hoverboard.term
 
-import hoverboard.Name
+import hoverboard._
 import hoverboard.rewrite.Env
 
 import scalaz.{Name => _, _}

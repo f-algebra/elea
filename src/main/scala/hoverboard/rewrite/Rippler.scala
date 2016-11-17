@@ -1,9 +1,9 @@
 package hoverboard.rewrite
 
-import hoverboard.term.{AppView, Constructor, CriticalPair, Fix, Substitution, Term, Var}
+import hoverboard.term._
 
-import scalaz._
-import Scalaz._
+import scalaz.Scalaz._
+import scalaz.{Name => _, _}
 
 /**
   * Implements rippling, using a provided critiquing engine if rippling gets blocked

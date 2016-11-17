@@ -1,10 +1,9 @@
 package hoverboard.term
 
-import hoverboard._
-import hoverboard.rewrite.Env
 import hoverboard.Name
+import hoverboard.rewrite.Env
 
-import scalaz.Ordering.{LT, GT, EQ}
+import scalaz.Ordering.{EQ, GT, LT}
 import scalaz.{Name => _, _}
 import Scalaz._
 

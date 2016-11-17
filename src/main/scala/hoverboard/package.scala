@@ -1,4 +1,6 @@
-import hoverboard.term.{Var, Substitution, Term}
+
+
+import hoverboard.term._
 
 import scalaz.{Name => _, _}
 import Scalaz._

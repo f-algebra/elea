@@ -1,7 +1,7 @@
 package hoverboard.rewrite
 
+import hoverboard.term._
 import hoverboard.Name
-import hoverboard.term.{AppView, Fix, Var}
 
 import scalaz.IList
 

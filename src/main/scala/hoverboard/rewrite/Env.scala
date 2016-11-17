@@ -1,7 +1,7 @@
 package hoverboard.rewrite
 
-import hoverboard._
-import hoverboard.term.{Case, Pattern, Term, UMap}
+import hoverboard.term._
+import hoverboard.Name
 
 import scalaz.{Name => _, _}
 import Scalaz._

@@ -1,6 +1,5 @@
 package hoverboard.term
 
-import hoverboard._
 import hoverboard.Name
 import hoverboard.rewrite.Env
 

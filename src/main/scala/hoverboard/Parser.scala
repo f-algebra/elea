@@ -1,7 +1,6 @@
 package hoverboard
 
 import hoverboard.term._
-
 import scalaz._
 import Scalaz._
 

@@ -2,7 +2,7 @@ package hoverboard.term
 
 import hoverboard.Name
 
-import scalaz._
+import scalaz.{Name => _, _}
 import Scalaz._
 
 class Substitution private (mapping: IMap[Name, Term]) extends FirstOrder[Substitution] {

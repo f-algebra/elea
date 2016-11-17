@@ -1,6 +1,6 @@
 package hoverboard.rewrite
 
-import hoverboard.term.{Logic, Term}
+import hoverboard.term._
 
 trait Simplifier {
   def run(env: Env, term: Term): Term

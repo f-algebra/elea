@@ -20,12 +20,12 @@ class TermTest extends TestConfig {
 
   "constant arguments" should "be detectable" in {
     term"fix f x y z -> case y | .0 -> z | .Suc y' -> .Suc (f x y' z) end"
-      .asInstanceOf[Fix].constantArgs shouldEqual IList(.0, 2)
+      .asInstanceOf[Fix].constantArgs shouldEqual IList(0, 2)
     term"fix x -> x"
       .asInstanceOf[Fix].constantArgs shouldEqual IList.empty[Int]
   }
 
-  they should "be removed by driving" in {
+  they should "be removed by reduction" in {
     term".add" shouldEqual
       term"fn x y -> (fix f x -> case x | .0 -> y | .Suc x' -> .Suc (f x') end) x"
     term".app" shouldEqual
@@ -287,5 +287,14 @@ class TermTest extends TestConfig {
       val tss = ISet.unions(ts.toList.map(t => t.freeSubtermSet.insert(t)))
       ts.foreach(t => tss should contain (t))
     }
+  }
+
+  "isProductive" should "work" in {
+    term".takeWhile p".reduce.asInstanceOf[Fix].isProductive shouldBe true
+    term".dropWhile p".reduce.asInstanceOf[Fix].isProductive shouldBe false
+    term".count n".reduce.asInstanceOf[Fix].isProductive shouldBe false
+    term".filter p".reduce.asInstanceOf[Fix].isProductive shouldBe false
+    term".map f".reduce.asInstanceOf[Fix].isProductive shouldBe true
+    term"fix x -> .Suc x".asInstanceOf[Fix].isProductive shouldBe true
   }
 }

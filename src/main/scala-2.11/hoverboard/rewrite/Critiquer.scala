@@ -27,7 +27,7 @@ class Critiquer(simplifier: => Simplifier) {
                 val newRipple = blockedRipple.copy(goal = fissionedFix.apply(goalArgs))
                 val critiquedRipple = run(env.havingSeen(goal), newRipple)
                 critiquedRipple.mapGoal(fissionedCtx.apply)
-              case None =>
+              case _ =>
                 if (skeletons.length == 1 &&
                     simplifier.proveLeq(env, goal, skeletons.headOption.get)) {
                   val genVar = Name.fresh("χ(eq)")

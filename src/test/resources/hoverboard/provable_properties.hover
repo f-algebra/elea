@@ -97,7 +97,7 @@ let prop_zeno27 =
 let prop_zeno28 = 
     .elem n (.app xs (.Cons n .Nil)) =< .True
     
-let prop_zeno29 = 
+let prop_zeno29 =
     .elem n (.eq_insert n xs) =< .True
 
 let prop_zeno30 =
@@ -125,7 +125,7 @@ let prop_zeno38 =
     .count n (.app xs (.Cons n .Nil)) =< .Suc (.count n xs)
 
 let prop_zeno39 =
-    .add (.count n (.Cons n .Nil)) (.count n xs) == .count n (.Cons x xs)
+    .add (.count n (.Cons x .Nil)) (.count n xs) == .count n (.Cons x xs)
 
 let prop_zeno40 =
     .take .0 xs == .Nil
@@ -189,11 +189,8 @@ let prop_zeno64 =
 let prop_zeno65 =
     .lt n (.Suc (.add m n)) =< .True
 
-/*
-Seems to take forever!
 let prop_zeno66 =
     .lteq (.length (.filter p xs)) (.length xs) =< .True
-*/
 
 let prop_zeno67 =
     .length (.butlast xs) =< .minus (.length xs) .1
@@ -212,12 +209,6 @@ let prop_zeno71 =
     assert .True <- .not (.eq n m) in
     .elem n (.insert m xs) =< .elem n xs
 
-let prop_zeno72 =
-    .rev (.drop n xs) == .take (.minus (.length xs) n) (.rev xs)
-
-let prop_zeno74 =
-    .rev (.take n xs) == .drop (.minus (.length xs) n) (.rev xs)
-
 let prop_zeno76 =
     assert .True <- .not (.eq n m) in
     .count n (.app xs (.Cons m .Nil)) =< .count n xs
@@ -233,21 +224,13 @@ let prop_zeno80 =
     .app (.take n xs) (.take (.minus n (.length xs)) ys)
     == .take n (.app xs ys)
 
-let prop_zeno81 =
-    .drop m (.take (.add n m) xs) == .take n (.drop m xs)
-
 let prop_zeno82 =
     .take n (.zip xs ys) == .zip (.take n xs) (.take n ys)
 
 let prop_zeno83 =
     .app (.zip xs (.take (.length xs) zs)) (.zip ys (.drop (.length xs) zs))
-    == .zip (.app xs ys) zs
+    =< .zip (.app xs ys) zs
 
 let prop_zeno84 =
     .app (.zip (.take (.length ys) xs) ys) (.zip (.drop (.length ys) xs) zs)
-    == .zip xs (.app ys zs)
-
-let prop_zeno85 =
-    assert .True <- .eq (.length xs) (.length ys) in
-    .rev (.zip xs ys) == .zip (.rev xs) (.rev ys)
-
+    =< .zip xs (.app ys zs)

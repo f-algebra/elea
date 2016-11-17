@@ -1,0 +1,14 @@
+
+let prop_cons_mismatch = .0 =< .Nil
+
+let prop_var_mismatch = x =< y
+
+let prop_var_leq_cons = x =< .0
+
+let prop_cons_leq_var = .0 =< x
+
+let prop_mul_commutative = .mul n m =< .mul m n
+
+let prop_add_commutative = .add n m =< .add m n
+
+let prop_rev_rev_id = xs =< .rev (.rev xs)

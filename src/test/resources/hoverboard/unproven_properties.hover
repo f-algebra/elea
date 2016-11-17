@@ -1,0 +1,14 @@
+
+
+let prop_zeno72 =
+    .rev (.drop n xs) == .take (.minus (.length xs) n) (.rev xs)
+
+let prop_zeno74 =
+    .rev (.take n xs) == .drop (.minus (.length xs) n) (.rev xs)
+
+let prop_zeno81 =
+    .drop m (.take (.add n m) xs) == .take n (.drop m xs)
+
+let prop_zeno85 =
+    assert .True <- .eq (.length xs) (.length ys) in
+    .rev (.zip xs ys) == .zip (.rev xs) (.rev ys)

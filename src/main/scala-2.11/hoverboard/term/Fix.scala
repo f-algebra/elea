@@ -104,6 +104,33 @@ case class Fix(body: Term,
   override def withName(name: String) =
     copy(name = Some(name))
 
+  lazy val isProductive: Boolean = {
+    val (bindings, innerBody) = body.flattenLam
+    bindings match {
+      case INil() =>
+        false
+      case ICons(fixVar, _) =>
+        def productiveBranch(branch: Branch): Boolean =
+          branch.immediateSubtermsWithBindings.all {
+            case (branchVars, branchTerm) =>
+              !branchVars.contains(fixVar) && productiveTerm(branchTerm)
+          }
+
+        def productiveTerm(term: Term): Boolean =
+          term match {
+            case _ if !term.freeVars.contains(fixVar) =>
+              true
+            case term: Case =>
+              !term.matchedTerm.freeVars.contains(fixVar) &&
+                term.branches.all(productiveBranch)
+            case _ =>
+              term.leftmost.isInstanceOf[Constructor]
+          }
+
+        productiveTerm(innerBody)
+    }
+  }
+
   def argCount: Int =
     body.flattenLam._1.length - 1  // -1 for the fixed variable
 

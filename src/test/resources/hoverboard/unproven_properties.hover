@@ -29,6 +29,9 @@ let prop_zeno85_right =
     assert .True <- .eq (.length xs) (.length ys) in
     .rev (.zip xs ys) >= .zip (.rev xs) (.rev ys)
 
+
+
+
 let prop_zeno65 =
     .lt n (.Suc (.add m n)) =< .True
 
@@ -54,7 +57,7 @@ let prop_zeno50_left =
 let prop_zeno50_right =
     .butlast xs >= .take (.minus (.length xs) .1) xs
 
-let prop_zeno51 =
+let prop_zeno51_left =
     .butlast (.app xs (.Cons x .Nil)) =< xs
 
 let prop_zeno63_left =

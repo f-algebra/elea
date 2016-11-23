@@ -9,21 +9,14 @@ import Scalaz._
 
 case class Fix(body: Term,
                index: Fix.Index,
-               name: Option[String] = None,
-               reduced: Boolean = false)
+               name: Option[String] = None)
   extends Term with FirstOrder[Term] {
 
-  override def reduce(env: Env): Term =
-    if (reduced)
-      this
-    else {
-      val newFix = super.reduce(env)
-      if (newFix =@= this) this // preserve `name`
-      else newFix
-    } match {
-      case newFix: Fix => newFix.copy(reduced = true)
-      case other => other
-    }
+  override def reduce(env: Env): Term = {
+    val newFix = super.reduce(env)
+    if (newFix =@= this) this // preserve `name`
+    else newFix
+  }
 
   override def reduceHead(env: Env): Term = {
     constantArgs
@@ -194,7 +187,7 @@ case class Fix(body: Term,
 
   override def zip(other: Term): Option[IList[(Term, Term)]] =
     other match {
-      case other: Fix if index.isOmega && other.index.isOmega || index == other.index =>
+      case other: Fix =>
         Some(IList((body, other.body)))
       case _ =>
         None

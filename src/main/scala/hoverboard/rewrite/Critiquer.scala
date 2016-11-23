@@ -13,7 +13,7 @@ class Critiquer(simplifier: => Simplifier) {
 
     if (skeletons.isEmpty) {
       blockedRipple
-    } else if (skeletons.length == 1 && skeletons.toList.head =@= goal) {
+    } else if (skeletons.length == 1 && (skeletons.toList.head :/ generalisation) =@= (goal :/ generalisation)) {
       val genVar = Name.fresh("χ")
       Ripple(IList(Var(genVar)), Var(genVar), generalisation ++! goal / genVar)
     } else {

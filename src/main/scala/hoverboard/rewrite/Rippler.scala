@@ -49,8 +49,9 @@ class Rippler(critiquer: Critiquer) {
             CriticalPair(goalFix: Fix, goalArgs: IList[Term], goalCp))
           // Critical-path aware coupling
           if skelArgs.length == goalArgs.length && skelCp.couplesWith(goalCp) =>
-        val ripples = skelArgs.fzipWith(goalArgs)(run(env, _, _))
-        val mergedRipple = mergeCouplingRipples(ripples, skelFix, goalFix)
+
+        val argRipples = skelArgs.fzipWith(goalArgs)(run(env, _, _))
+        val mergedRipple = mergeCouplingRipples(argRipples, skelFix, goalFix)
         critiquer.run(env, mergedRipple)
 
       case _ =>

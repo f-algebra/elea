@@ -15,7 +15,7 @@ case class Var(name: Name) extends Term {
 
   override lazy val freeVars = ISet.singleton(name)
 
-  override def :/gi (sub: Substitution): Term =
+  override def :/(sub: Substitution): Term =
     sub.toMap.lookup(name).getOrElse(this)
 
   override def unifyLeftUnchecked(to: Term): Option[Substitution] =

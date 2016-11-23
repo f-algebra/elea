@@ -18,6 +18,9 @@ class UMap[K <: TermLike[K], V] private(val toSeq: Seq[(K, V)]) {
     new UMap(toSeq.filter { case (k, _) => p(k) })
 
   def size: Int = toSeq.size
+
+  override def toString: String =
+    s"{${toSeq.map { case (k, v) => s"$k -> $v"}.mkString(", ")}}"
 }
 
 object UMap {

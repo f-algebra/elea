@@ -115,13 +115,7 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
             val successfulRipples = ripple
               .skeletons
               .filter(_.isInstanceOf[Var])
-              .map { x =>
-                val unrippled = x :/ ripple.generalisation
-                val foldSub = fold.from.unifyLeft(unrippled)
-                foldSub.getOrElse {
-                  throw new AssertionError("Successful ripple was not unifiable with original skeleton")
-                }
-              }
+              .flatMap { x => fold.from.unifyLeft(x :/ ripple.generalisation).toIList }
             val result = successfulRipples.foldLeft(ripple.goal :/ ripple.generalisation) { (goal, sub) =>
               goal.replace(fold.from :/ sub, fold.to :/ sub)
             }

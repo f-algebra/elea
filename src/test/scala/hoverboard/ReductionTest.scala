@@ -1,5 +1,6 @@
 package hoverboard
 
+import hoverboard.rewrite.Env
 import hoverboard.term._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -124,6 +125,10 @@ class ReductionTest extends TestConfig {
 
     term"case .rev xs | .Cons y ys -> case ys | .Cons z zs -> .rev xs end end".reduce shouldEqual
       term"case .rev xs | .Cons y ys -> case ys | .Cons z zs -> .Cons y (.Cons z zs) end end"
+
+    term".minus ((fix add x -> case[add] x | .0 -> n | .Suc x' -> .Suc (add x') end) m) (.Suc y')"
+      .reduce(Env.empty.withMatch(term"n", Pattern.from(term".Suc y'"))) shouldEqual
+      term".minus ((fix add x -> case[add] x | .0 -> .Suc y' | .Suc x' -> .Suc (add x') end) m) (.Suc y')"
   }
 
   it should "perform logical reduction" in {

@@ -8,11 +8,14 @@ import Scalaz._
 
 case class Var(name: Name) extends Term {
   override def reduceHead(env: Env) =
-    env.matches.lookup(this).fold(this: Term)(_.asTerm)
+    env.matches
+      .lookup(this)
+      .map(_.asTerm)
+      .getOrElse(this)
 
   override lazy val freeVars = ISet.singleton(name)
 
-  override def :/(sub: Substitution): Term =
+  override def :/gi (sub: Substitution): Term =
     sub.toMap.lookup(name).getOrElse(this)
 
   override def unifyLeftUnchecked(to: Term): Option[Substitution] =

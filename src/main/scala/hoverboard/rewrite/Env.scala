@@ -2,6 +2,7 @@ package hoverboard.rewrite
 
 import hoverboard.term._
 import hoverboard.Name
+import hoverboard.rewrite.Supercompiler.Fold
 
 import scalaz.{Name => _, _}
 import Scalaz._
@@ -9,7 +10,7 @@ import Scalaz._
 case class Env(rewriteDirection: Direction,
                matches: UMap[Term, Pattern],
                termHistory: IList[Term],
-               pathHistory: IList[IList[Case.Index]]) {
+               foldHistory: IList[Fold]) {
   def invertDirection: Env =
     copy(rewriteDirection = rewriteDirection.invert)
 
@@ -19,14 +20,14 @@ case class Env(rewriteDirection: Direction,
   def alreadySeen(term: Term) =
     termHistory.any(_ embedsInto term)
 
-  def alreadySeen(criticalPath: IList[Case.Index]) =
-    pathHistory.any(_ embedsInto criticalPath)
+  def alreadySeen(fold: Fold) =
+    foldHistory.any(_ embedsInto fold)
 
   def havingSeen(term: Term): Env =
     copy(termHistory = term :: termHistory)
 
-  def havingSeen(criticalPath: IList[Case.Index]): Env =
-    copy(pathHistory = criticalPath :: pathHistory)
+  def havingSeen(fold: Fold): Env =
+    copy(foldHistory = fold :: foldHistory)
 
   def withBindings(bindings: ISet[Name]): Env =
     copy(matches = matches.filterKeys { t =>
@@ -34,7 +35,7 @@ case class Env(rewriteDirection: Direction,
     })
 
   def clearHistory: Env =
-    copy(termHistory = IList.empty, pathHistory = IList.empty)
+    copy(termHistory = IList.empty, foldHistory = IList.empty)
 
   def clearMatches: Env =
     copy(matches = UMap.empty)

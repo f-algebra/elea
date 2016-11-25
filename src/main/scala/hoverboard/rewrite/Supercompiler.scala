@@ -1,7 +1,7 @@
 package hoverboard.rewrite
 
 import hoverboard.term._
-import hoverboard.Name
+import hoverboard._
 
 import scalaz.Scalaz._
 import scalaz.{Name => _, _}
@@ -81,6 +81,11 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
         other
     }
 
+  /**
+    * @param folds We actually maintain two lists of already seen folds. The one in `env` is for ensuring termination,
+    *              the one in this variable is for the folding step of supercompilation. So, this list is always
+    *              a sub-list of the one in `env`.
+    */
   private def supercompile(env: Env, folds: IList[Fold], term: Term): Term = {
     term.reduce(env.clearHistory) match {
       case FPPF(fun, args) =>
@@ -88,12 +93,12 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
         fun.apply(args.map(Var(_): Term))
 
       case CriticalPair(fun: Fix, args, cp) =>
-        folds.find(_.criticalPair embedsInto cp) match {
-          case None if !env.alreadySeen(cp.path) =>
+        val fold = Fold(cp, fun.apply(args))
+        folds.find(_ embedsInto fold) match {
+          case None if !env.alreadySeen(fold) =>
             // No existing fold has a matching critical path, so we should continue unrolling
-            val fold = Fold(cp, fun.apply(args))
             val newEnv = env
-              .havingSeen(cp.path)    // Store this critical path so it can be matched on later to apply folding
+              .havingSeen(fold)       // Store this fold so it can be matched on later to ensure termination
               .clearMatches           // It is unsound to apply pattern matches from outside supercompilation, within the supercompilation step
             val expandedTerm = C(_ => fold.from)
               .applyToBranches(cp.action.caseOf)
@@ -174,5 +179,12 @@ object Supercompiler {
     val foldVar: Name = Name.fresh("μ")
     val args: IList[Name] = from.freeVars.toIList
     val to: Term = Var(foldVar).apply(args.map(Var(_): Term))
+    def path: IList[Case.Index] = criticalPair.path
+
+    def embedsInto(other: Fold): Boolean =
+      if (path == other.path)
+        from.embedsInto(other.from)
+      else
+        path.embedsInto(other.path)
   }
 }

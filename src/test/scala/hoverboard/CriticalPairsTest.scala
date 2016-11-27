@@ -14,7 +14,7 @@ class CriticalPairsTest extends TestConfig {
     val cp = CriticalPair.of(fix, args)
     cp.action shouldBe a [T]
     cp.path shouldEqual expectedPath.map(Case.Index.fromName)
-    cp.action.apply(term).reduce shouldEqual expectedExpandedTerm.reduce
+    cp.action.apply(fix.apply(args)).reduce shouldEqual expectedExpandedTerm.reduce
   }
 
   // Yes, I know this is a table driven test, I just prefer this style
@@ -75,7 +75,7 @@ class CriticalPairsTest extends TestConfig {
       term".Suc (.add (.add x y) z)")
 
     testCriticalPair[Fission](
-      term".lteq (.add (.Suc x) y) z",
+      term".lteq (.add x (.Suc y)) z",
       IList("lteq1"),
       term".lteq (.Suc (.add x y)) z")
   }

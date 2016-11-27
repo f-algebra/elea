@@ -46,7 +46,7 @@ object CriticalPair {
     val cp = fix.body.apply(Var(fixVar) :: args).reduce match {
       case term: Case if fixArgSubterms.exists(_ =@= term.matchedTerm) =>
         term.matchedTerm match {
-          case AppView(matchFix: Fix, matchArgs) if false && matchFix.fissionConstructorContext.isDefined =>
+          case AppView(matchFix: Fix, matchArgs) if matchFix.fissionConstructorContext.isDefined =>
             CriticalPair
               .fission(matchFix, matchArgs)
               .extendPathWithMatch(term.index)
@@ -121,7 +121,7 @@ object CriticalPair {
     override def shouldFold = false
 
     override def apply(from: Term): Term =
-       ??? // C(_ => from).applyToBranches(caseOf)
+      from.replace(fix.apply(args), fix.fissionConstructorContext(args).get)
 
     override def sameTypeAs(other: Action): Boolean =
       other.isInstanceOf[Fission]

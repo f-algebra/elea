@@ -1,6 +1,7 @@
 package hoverboard.term
 
 import hoverboard._
+import hoverboard.term.CriticalPair.Induction
 
 import scalaz.{ICons, IList, ISet}
 
@@ -10,7 +11,7 @@ case class CriticalPair(
   path: IList[Case.Index],
   action: CriticalPair.Action) {
 
-  def isCaseSplit: Boolean = action.isInstanceOf[CriticalPair.CaseSplit]
+  def isFoldable: Boolean = action.isInstanceOf[Induction]
 
   def :/(sub: Substitution): CriticalPair =
     copy(action = action :/ sub)
@@ -29,7 +30,7 @@ case class CriticalPair(
 
   /**
     * Check whether the path of this pair is a sub-path of the path of an`other` pair.
-    * Used to check whether we should continue unfolding fixed-points in [[Supercompiler.supercompile()]].
+    * Used to check whether we should continue unfolding fixed-points in [[hoverboard.rewrite.Supercompiler.supercompile()]].
     */
   def embedsInto(other: CriticalPair): Boolean =
     path embedsInto other.path
@@ -44,6 +45,9 @@ object CriticalPair {
     val cp = fix.body.apply(Var(fixVar) :: args).reduce match {
       case term: Case if fixArgSubterms.exists(_ =@= term.matchedTerm) =>
         term.matchedTerm match {
+          case AppView(matchFix: Fix, _) if false && matchFix.fissionConstructorContext.isDefined =>
+            CriticalPair
+              .fission(term)
           case AppView(matchFix: Fix, matchArgs: IList[Term]) =>
             CriticalPair
               .of(matchFix, matchArgs)
@@ -51,12 +55,10 @@ object CriticalPair {
           case _ =>
             CriticalPair
               .induction(term)
-              .extendPathWithMatch(term.index)
         }
       case term: Case =>
         CriticalPair
           .caseSplit(term)
-          .extendPathWithMatch(term.index)
       case _ =>
         throw new IllegalArgumentException(s"Term does not have critical pair: ${fix.apply(args)}")
     }
@@ -74,23 +76,47 @@ object CriticalPair {
   sealed trait Action {
     def :/(sub: Substitution): Action
 
-    /**
-      * Convenience method which I'll remove after implementing fixed-point induction
-      */
+    def shouldFold: Boolean
+
+    def apply(from: Term): Term
+
+    // TODO remove this when I add fixed-point induction?
     def caseOf: Case
   }
 
   case class Induction private(caseOf: Case) extends Action {
-    def :/(sub: Substitution) = copy(caseOf = caseOf :/ sub)
+    override def :/(sub: Substitution) = copy(caseOf = caseOf :/ sub)
+
+    override def shouldFold = true
+
+    override def apply(from: Term): Term =
+      C(_ => from).applyToBranches(caseOf)
   }
 
   case class CaseSplit private(caseOf: Case) extends Action {
-    def :/(sub: Substitution) = copy(caseOf = caseOf :/ sub)
+    override def :/(sub: Substitution) = copy(caseOf = caseOf :/ sub)
+
+    override def shouldFold = false
+
+    override def apply(from: Term): Term =
+      C(_ => from).applyToBranches(caseOf)
+  }
+
+  case class Fission private(caseOf: Case) extends Action {
+    override def :/(sub: Substitution) = copy(caseOf = caseOf :/ sub)
+
+    override def shouldFold = false
+
+    override def apply(from: Term): Term =
+      C(_ => from).applyToBranches(caseOf)
   }
 
   def induction(caseOf: Case): CriticalPair =
-    CriticalPair(IList.empty, Induction(caseOf))
+    CriticalPair(IList(caseOf.index), Induction(caseOf))
 
   def caseSplit(caseOf: Case): CriticalPair =
-    CriticalPair(IList.empty, CaseSplit(caseOf))
+    CriticalPair(IList(caseOf.index), CaseSplit(caseOf))
+
+  def fission(caseOf: Case): CriticalPair =
+    CriticalPair(IList(caseOf.index), Fission(caseOf))
 }

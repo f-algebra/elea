@@ -2,6 +2,7 @@ package hoverboard.rewrite
 
 import hoverboard.term._
 import hoverboard._
+import hoverboard.term.CriticalPair.{CaseSplit, Induction}
 
 import scalaz.Scalaz._
 import scalaz.{Name => _, _}
@@ -100,11 +101,11 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
             val newEnv = env
               .havingSeen(fold)       // Store this fold so it can be matched on later to ensure termination
               .clearMatches           // It is unsound to apply pattern matches from outside supercompilation, within the supercompilation step
-            val expandedTerm = C(_ => fold.from)
-              .applyToBranches(cp.action.caseOf)
+            val expandedTerm = fold
+              .expand
               .reduce(env.clearHistory)
             val supercompiledTerm = supercompile(newEnv, fold :: folds, expandedTerm)
-            if (cp.isCaseSplit || !supercompiledTerm.freeVars.contains(fold.foldVar)) {
+            if (!fold.shouldMemoise || !supercompiledTerm.freeVars.contains(fold.foldVar)) {
               supercompiledTerm
             } else {
               val fixBody = Lam(fold.foldVar :: fold.args, supercompiledTerm)
@@ -114,7 +115,7 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
               result
             }
 
-          case Some(fold) if !fold.criticalPair.isCaseSplit =>
+          case Some(fold) if fold.shouldMemoise =>
             // We've found a matching critical path, so it's time to ripple
             val ripple = rippler.run(env, fold.from, term)
             val successfulRipples = ripple
@@ -132,10 +133,12 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
       case AppView(fun, args) if args.nonEmpty =>
         // Constructor or variable function, so supercompile the arguments
         App(fun, args.map(supercompile(env, folds, _)))
+
       case leq: Leq =>
         val compiledLargerTerm = run(env.invertDirection, leq.largerTerm)
         val compiledSmallerTerm = run(env, leq.smallerTerm)
         supercompileHead(env, IList.empty, Leq(compiledSmallerTerm, compiledLargerTerm))
+
       case term: Case =>
         // Descend into the branches of pattern matches
         val newMatchedTerm = supercompile(env, folds, term.matchedTerm)
@@ -180,6 +183,12 @@ object Supercompiler {
     val args: IList[Name] = from.freeVars.toIList
     val to: Term = Var(foldVar).apply(args.map(Var(_): Term))
     def path: IList[Case.Index] = criticalPair.path
+
+    def expand: Term =
+      criticalPair.action.apply(from)
+
+    def shouldMemoise: Boolean =
+      criticalPair.action.shouldFold
 
     def embedsInto(other: Fold): Boolean =
       if (path == other.path)

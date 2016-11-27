@@ -52,6 +52,9 @@ let prop_zeno52_right =
 let prop_zeno53_left =
     .count n (.insertsort xs) =< .count n xs
 
+/*
+This one takes ages to fail to prove. Worth investigating.
 let prop_zeno53_right =
     .count n (.insertsort xs) >= .count n xs
+*/
 

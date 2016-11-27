@@ -157,6 +157,9 @@ let prop_zeno48_left =
     assert .False <- .null xs in
     .app (.butlast xs) (.Cons (.last xs) .Nil) =< xs
 
+let prop_zeno50_left =
+    .butlast xs =< .take (.minus (.length xs) .1) xs
+
 let prop_zeno54 =
     .minus (.add m n) n =< m
 
@@ -179,6 +182,10 @@ let prop_zeno62 =
     assert .True <- .not (.null xs) in
     .last (.Cons x xs) == .last xs
 
+let prop_zeno63_left =
+    assert .True <- .lt n (.length xs) in
+    .last (.drop n xs) =< .last xs
+
 let prop_zeno64 =
     .last (.app xs (.Cons x .Nil)) =< x
 
@@ -196,6 +203,10 @@ let prop_zeno71 =
 let prop_zeno76 =
     assert .True <- .not (.eq n m) in
     .count n (.app xs (.Cons m .Nil)) =< .count n xs
+
+let prop_zeno80_left =
+    .app (.take n xs) (.take (.minus n (.length xs)) ys)
+    =< .take n (.app xs ys)
 
 let prop_zeno82 =
     .take n (.zip xs ys) == .zip (.take n xs) (.take n ys)

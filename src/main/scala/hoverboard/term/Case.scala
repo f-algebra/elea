@@ -23,10 +23,16 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
     * Re-reduce after branches have been modified, but when we know the matched term has not been altered.
     */
   final def reduceIgnoringMatchedTerm(env: Env): Term =
-    reduceBranches(env).reduceHead(env)
+    if (matchedTerm.isInstanceOf[Case] ||
+      matchedTerm.leftmost.isInstanceOf[Constructor])
+      reduceHead(env)   // Not worth reducing branches if we're just going to reduce them again anyway
+    else
+      reduceBranches(env)
+        .reduceHead(env)
 
   override protected def reduceSubterms(env: Env): Term =
-    copy(matchedTerm = matchedTerm.reduce(env)).reduceBranches(env)
+    copy(matchedTerm = matchedTerm.reduce(env))
+      .reduceIgnoringMatchedTerm(env)
 
   // Floating pattern matches out of function position
   override def reduceHeadApp(env: Env, args: NonEmptyList[Term]): Term =

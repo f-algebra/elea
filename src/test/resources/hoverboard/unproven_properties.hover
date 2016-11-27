@@ -51,22 +51,11 @@ let prop_zeno77 =
 let prop_zeno78 =
     .isSorted (.insertsort xs) =< .True
 
-let prop_zeno50_left =
-    .butlast xs =< .take (.minus (.length xs) .1) xs
-
 let prop_zeno50_right =
     .butlast xs >= .take (.minus (.length xs) .1) xs
 
 let prop_zeno51_left =
     .butlast (.app xs (.Cons x .Nil)) =< xs
-
-let prop_zeno63_left =
-    assert .True <- .lt n (.length xs) in
-    .last (.drop n xs) =< .last xs
-
-let prop_zeno80_left =
-    .app (.take n xs) (.take (.minus n (.length xs)) ys)
-    =< .take n (.app xs ys)
 
 let prop_zeno63_right =
     assert .True <- .lt n (.length xs) in

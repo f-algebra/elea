@@ -15,7 +15,11 @@ case class Env(rewriteDirection: Direction,
     copy(rewriteDirection = rewriteDirection.invert)
 
   def withMatch(term: Term, pattern: Pattern) =
-    copy(matches = matches + (term -> pattern))
+    if (term.isInstanceOf[Case] ||              // Not worth keeping pattern matches that will just be reduced
+      term.leftmost.isInstanceOf[Constructor])
+      this
+    else
+      copy(matches = matches + (term -> pattern))
 
   def alreadySeen(term: Term) =
     termHistory.any(_ embedsInto term)

@@ -33,7 +33,8 @@ case class CriticalPair(
     * Used to check whether we should continue unfolding fixed-points in [[hoverboard.rewrite.Supercompiler.supercompile()]].
     */
   def embedsInto(other: CriticalPair): Boolean =
-    path embedsInto other.path
+    action.sameTypeAs(other.action) &&
+      path.embedsInto(other.path)
 }
 
 object CriticalPair {
@@ -45,9 +46,10 @@ object CriticalPair {
     val cp = fix.body.apply(Var(fixVar) :: args).reduce match {
       case term: Case if fixArgSubterms.exists(_ =@= term.matchedTerm) =>
         term.matchedTerm match {
-          case AppView(matchFix: Fix, _) if false && matchFix.fissionConstructorContext.isDefined =>
+          case AppView(matchFix: Fix, matchArgs) if false && matchFix.fissionConstructorContext.isDefined =>
             CriticalPair
-              .fission(term)
+              .fission(matchFix, matchArgs)
+              .extendPathWithMatch(term.index)
           case AppView(matchFix: Fix, matchArgs: IList[Term]) =>
             CriticalPair
               .of(matchFix, matchArgs)
@@ -55,10 +57,12 @@ object CriticalPair {
           case _ =>
             CriticalPair
               .induction(term)
+              .extendPathWithMatch(term.index)
         }
       case term: Case =>
         CriticalPair
           .caseSplit(term)
+          .extendPathWithMatch(term.index)
       case _ =>
         throw new IllegalArgumentException(s"Term does not have critical pair: ${fix.apply(args)}")
     }
@@ -80,8 +84,7 @@ object CriticalPair {
 
     def apply(from: Term): Term
 
-    // TODO remove this when I add fixed-point induction?
-    def caseOf: Case
+    def sameTypeAs(other: Action): Boolean
   }
 
   case class Induction private(caseOf: Case) extends Action {
@@ -91,6 +94,9 @@ object CriticalPair {
 
     override def apply(from: Term): Term =
       C(_ => from).applyToBranches(caseOf)
+
+    override def sameTypeAs(other: Action): Boolean =
+      other.isInstanceOf[Induction]
   }
 
   case class CaseSplit private(caseOf: Case) extends Action {
@@ -100,23 +106,33 @@ object CriticalPair {
 
     override def apply(from: Term): Term =
       C(_ => from).applyToBranches(caseOf)
+
+    override def sameTypeAs(other: Action): Boolean =
+      other.isInstanceOf[CaseSplit]
   }
 
-  case class Fission private(caseOf: Case) extends Action {
-    override def :/(sub: Substitution) = copy(caseOf = caseOf :/ sub)
+  case class Fission private(fix: Fix, args: IList[Term]) extends Action {
+    require(fix.fissionConstructorContext.isDefined)
+
+    override def :/(sub: Substitution) = copy(
+      fix = (fix :/ sub).asInstanceOf[Fix],
+      args = args.map(_ :/ sub))
 
     override def shouldFold = false
 
     override def apply(from: Term): Term =
-      C(_ => from).applyToBranches(caseOf)
+       ??? // C(_ => from).applyToBranches(caseOf)
+
+    override def sameTypeAs(other: Action): Boolean =
+      other.isInstanceOf[Fission]
   }
 
   def induction(caseOf: Case): CriticalPair =
-    CriticalPair(IList(caseOf.index), Induction(caseOf))
+    CriticalPair(IList.empty, Induction(caseOf))
 
   def caseSplit(caseOf: Case): CriticalPair =
-    CriticalPair(IList(caseOf.index), CaseSplit(caseOf))
+    CriticalPair(IList.empty, CaseSplit(caseOf))
 
-  def fission(caseOf: Case): CriticalPair =
-    CriticalPair(IList(caseOf.index), Fission(caseOf))
+  def fission(fix: Fix, args: IList[Term]): CriticalPair =
+    CriticalPair(IList.empty, Fission(fix, args))
 }

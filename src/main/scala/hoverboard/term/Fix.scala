@@ -56,16 +56,22 @@ case class Fix(body: Term,
               val originalTerm = App(this, args)
               val reduced = App(body.body, args).reduce(env)
 
-              lazy val wasProductive = reduced.subtermsContaining(ISet.singleton(body.binding)).all {
+              val recursiveSubterms = reduced.subtermsContaining(ISet.singleton(body.binding))
+
+              // TODO try all recursive subterms which are pattern matches must match over a sub-term, instead of the general is case-of logic
+
+              lazy val wasProductive = recursiveSubterms.all {
                 case term@App(Var(f), xs) if f == body.binding =>
                   term.strictlyEmbedsInto(App(Var(f), args))
                 case _ =>
                   true
               }
 
-              // TODO remove all this unfolding logic if I can get it working without it
-              // Seems that I can't. Remember the ".lteq (.count n xs) (.count n (.app xs ys))" example!
-              if (!reduced.isInstanceOf[Case] && wasProductive)
+              // TODO what about examples that remove all recursive subterms after multiple unfoldings?
+
+              // Remember the ".lteq (.count n xs) (.count n (.app xs ys))" example next time you feel
+              // like simplifying this unfolding logic
+              if (recursiveSubterms.isEmpty || (!reduced.isInstanceOf[Case] && wasProductive))
                 (reduced :/ (this / body.binding)).reduce(env.havingSeen(originalTerm))
               else
                 super.reduceHeadApp(env, args)

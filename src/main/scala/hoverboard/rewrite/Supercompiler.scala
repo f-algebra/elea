@@ -104,7 +104,8 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
             val expandedTerm = fold
               .expand
               .reduce(env.clearHistory)
-            val supercompiledTerm = supercompile(newEnv, fold :: folds, expandedTerm)
+            val newFolds = if (fold.shouldMemoise) fold :: folds else folds
+            val supercompiledTerm = supercompile(newEnv, newFolds, expandedTerm)
             if (!fold.shouldMemoise || !supercompiledTerm.freeVars.contains(fold.foldVar)) {
               supercompiledTerm
             } else {
@@ -115,15 +116,15 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
               result
             }
 
-          case Some(fold) if fold.shouldMemoise =>
+          case Some(existingFold) =>
             // We've found a matching critical path, so it's time to ripple
-            val ripple = rippler.run(env, fold.from, term)
+            val ripple = rippler.run(env, existingFold.from, term)
             val successfulRipples = ripple
               .skeletons
               .filter(_.isInstanceOf[Var])
-              .flatMap { x => fold.from.unifyLeft(x :/ ripple.generalisation).toIList }
+              .flatMap { x => existingFold.from.unifyLeft(x :/ ripple.generalisation).toIList }
             val result = successfulRipples.foldLeft(ripple.goal :/ ripple.generalisation) { (goal, sub) =>
-              goal.replace(fold.from :/ sub, fold.to :/ sub)
+              goal.replace(existingFold.from :/ sub, existingFold.to :/ sub)
             }
             result
 
@@ -182,7 +183,9 @@ object Supercompiler {
     val foldVar: Name = Name.fresh("μ")
     val args: IList[Name] = from.freeVars.toIList
     val to: Term = Var(foldVar).apply(args.map(Var(_): Term))
+
     def path: IList[Case.Index] = criticalPair.path
+    def action: CriticalPair.Action = criticalPair.action
 
     def expand: Term =
       criticalPair.action.apply(from)
@@ -191,9 +194,9 @@ object Supercompiler {
       criticalPair.action.shouldFold
 
     def embedsInto(other: Fold): Boolean =
-      if (path == other.path)
+      if (path == other.path && action.sameTypeAs(other.action))
         from.embedsInto(other.from)
       else
-        path.embedsInto(other.path)
+        criticalPair.embedsInto(other.criticalPair)
   }
 }

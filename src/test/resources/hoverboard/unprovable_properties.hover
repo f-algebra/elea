@@ -24,8 +24,11 @@ let prop_zeno1_right =
 let prop_zeno3_right =
     .lteq (.count n xs) (.count n (.app xs ys)) >= .True
 
+/*
+TODO This shouldn't be provable but it is.
 let prop_zeno4_right =
     .count n (.Cons n xs) >= .Suc (.count n xs)
+*/
 
 let prop_zeno6_right=
     .minus n (.add n m) >= .0

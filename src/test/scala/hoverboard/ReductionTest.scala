@@ -103,6 +103,9 @@ class ReductionTest extends TestConfig {
   it should "unfold fixed-points if it will remove the fixed-point entirely" in {
     term"case xs | .Nil -> .isSorted (.insert n xs) end".reduce shouldEqual
       term"case xs | .Nil -> .True end".reduce
+
+//    term".isSorted (.Cons x (.Cons (.Suc x') (.Cons .0 ys)))".reduce shouldEqual
+//      term".False"
   }
 
   it should "rewrite fixed-points called with ⊥ as strict arguments" in {

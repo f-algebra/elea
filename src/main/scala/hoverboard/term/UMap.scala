@@ -1,7 +1,7 @@
 package hoverboard.term
 
 /**
-  * A mapping with alpha-equality based lookup. Also preserves insertion order.
+  * A mapping with alpha-equality based lookup. Also preserves insertion order. Very un-optimised.
   */
 class UMap[K <: TermLike[K], V] private(val toSeq: Seq[(K, V)]) {
 
@@ -21,6 +21,9 @@ class UMap[K <: TermLike[K], V] private(val toSeq: Seq[(K, V)]) {
 
   override def toString: String =
     s"{${toSeq.map { case (k, v) => s"$k -> $v"}.mkString(", ")}}"
+
+  def :/(sub: Substitution) =
+    new UMap(toSeq.map { case (k, v) => (k :/ sub, v) })
 }
 
 object UMap {

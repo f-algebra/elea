@@ -23,9 +23,10 @@ class Prover(simplifier: => Simplifier) {
       val matchConjunction = env.matches.toSeq
         .map((assertionFromMatch _).tupled)
         .reduce[Context] { case (ctx1, ctx2) => ctx1.composeWith(ctx2) }
-      matchConjunction
+      val result = matchConjunction
           .composeWith(matchConjunction)
           .apply(Logic.Falsity)
-          .reduce == Logic.Truth
+          .reduce
+      result == Logic.Truth
     }
 }

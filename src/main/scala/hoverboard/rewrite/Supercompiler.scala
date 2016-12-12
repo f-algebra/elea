@@ -75,7 +75,7 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
         val result = supercompile(env.havingSeen(term), IList.empty, newLeq)
         result
 
-      case _ if prover.unsatisfiable(env) =>
+      case term if !term.isInstanceOf[Case] && term != Bot && prover.unsatisfiable(env) =>
         Bot
 
       case other =>
@@ -87,7 +87,7 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
     *              the one in this variable is for the folding step of supercompilation. So, this list is always
     *              a sub-list of the one in `env`.
     */
-  private def supercompile(env: Env, folds: IList[Fold], term: Term): Term = {
+  private def supercompile(env: Env, folds: IList[Fold], term: Term): Term = {gt
     term.reduce(env.clearHistory) match {
       case FPPF(fun, args) =>
         // Job done

@@ -18,8 +18,17 @@ case class Env(rewriteDirection: Direction,
     if (term.isInstanceOf[Case] ||              // Not worth keeping pattern matches that will just be reduced
       term.leftmost.isInstanceOf[Constructor])
       this
-    else
-      copy(matches = matches + (term -> pattern))
+    else {
+      val newMatches =
+        term match {
+          case x: Var =>
+            matches :/ (pattern.asTerm / x.name)  // Apply the pattern match as a rewrite to existing stored matches
+          case _ =>
+            matches
+        }
+
+      copy(matches = newMatches + (term -> pattern))
+    }
 
   def alreadySeen(term: Term) =
     termHistory.any(_ embedsInto term)

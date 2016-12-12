@@ -15,56 +15,6 @@ let prop_revSnoc =
 let prop_rev_id_left =
     .rev (.rev xs) =< xs
 
-let prop_remove_unsat1 =
-  case .isSorted xs | .True ->
-    case xs | .Cons x xs' ->
-      case xs' | .Cons x' xs'' ->
-        case .lteq x x' | .True ->
-          case xs'' | .Cons y ys ->
-            case x' | .Suc x' ->
-              case y | .0 -> false end
-            end
-          end
-        end
-      end
-    end
-  end
-
-let prop_remove_unsat2 =
-    case .isSorted xs
-    | .True ->
-      case xs
-      | .Cons x xs' ->
-        case .lteq n x
-        | .False ->
-          case xs'
-          | .Cons x9 xs'3 ->
-            case .lteq n x9
-            | .True ->
-              case .lteq x n
-              | .False -> false
-              | .True ->
-                case xs'3
-                | .Nil -> ⊥
-                | .Cons y ys ->
-                  case x9
-                  | .0 -> ⊥
-                  | .Suc x9 ->
-                    case y
-                    | .0 -> false
-                    | .Suc y -> ⊥
-                    end
-                  end
-                end
-              end
-            | .False -> ⊥
-            end
-          end
-        end
-      end
-    | else -> ⊥
-    end
-
 
 let prop_zeno1_left =
     .app (.take n xs) (.drop n xs) =< xs
@@ -253,10 +203,6 @@ let prop_zeno71 =
 let prop_zeno76 =
     assert .True <- .not (.eq n m) in
     .count n (.app xs (.Cons m .Nil)) =< .count n xs
-
-let prop_zeno77 =
-    assert .True <- .isSorted xs in
-    .isSorted (.insert n xs) =< .True
 
 let prop_zeno80_left =
     .app (.take n xs) (.take (.minus n (.length xs)) ys)

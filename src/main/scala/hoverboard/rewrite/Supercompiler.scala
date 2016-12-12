@@ -87,7 +87,7 @@ class Supercompiler(rippler: Rippler, prover: Prover) extends Simplifier {
     *              the one in this variable is for the folding step of supercompilation. So, this list is always
     *              a sub-list of the one in `env`.
     */
-  private def supercompile(env: Env, folds: IList[Fold], term: Term): Term = {gt
+  private def supercompile(env: Env, folds: IList[Fold], term: Term): Term = {
     term.reduce(env.clearHistory) match {
       case FPPF(fun, args) =>
         // Job done

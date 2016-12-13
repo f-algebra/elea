@@ -11,14 +11,15 @@ class Program(val definitions: Map[String, Term]) {
     Program(definitions + newDef)
   }
 
-  def definitionOf(name: String): Term = {
-    require(definitions.contains(name), s"Cannot find definition for $name")
-    definitions.get(name).get
-  }
+  def ++(newDefs: Seq[(String, Term)]): Program =
+    newDefs.foldLeft(this)(_ + _)
+
+  def definitionOf(name: String): Option[Term] =
+    definitions.get(name)
 
   def loadURL(url: URL): Program = {
     val text = Source.fromURL(url).mkString
-    Parser.parseAll(text)(_.modifyTerm(_.reduce))(this)
+    OldParser.parseAll(text)(_.modifyTerm(_.reduce))(this)
   }
 }
 

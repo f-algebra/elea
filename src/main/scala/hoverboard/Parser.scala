@@ -1,39 +1,32 @@
 package hoverboard
 
 import hoverboard.term._
-import scalaz._
-import Scalaz._
 
-sealed trait Statement {
-  def apply(program: Program): Program
-}
+import scalaz.{IList, ISet, NonEmptyList, Scalaz}
+import scalaz.Scalaz.intInstance
 
-case class TermDef(name: String, term: Term) extends Statement {
-  def apply(program: Program) = program + (name -> term.withName(name))
-
-  def modifyTerm(f: Term => Term): TermDef =
-    copy(term = f(term))
-}
-
-case class ConstructorDef(constr: Constructor) extends Statement {
-  def apply(program: Program) =
-    program + (constr.name.toString -> constr)
-}
-
-object Parser {
-
-  private sealed trait BinOp
-
-  private object BinOp {
-
-    case object Leq extends BinOp
-    case object Geq extends BinOp
-    case object Eq extends BinOp
-    case object And extends BinOp
-    case object Or extends BinOp
+/**
+  * Parses our lisp-style untyped lambda calculus with fixed-points and algebraic data-types
+  */
+class Parser {
+  sealed trait Statement {
+    def apply(program: Program): Program
   }
 
-  private class Rules(program: Program) {
+  case class TermDef(name: String, term: Term) extends Statement {
+    def apply(program: Program) = program + (name -> term.withName(name))
+
+    def modifyTerm(f: Term => Term): TermDef =
+      copy(term = f(term))
+  }
+
+  case class DataDef(name: String, constructors: Seq[Constructor]) extends Statement {
+    def apply(program: Program) =
+      program ++ constructors.map(c => c.name.toString -> c)
+  }
+
+
+  private class Rules(program: Program){
     import fastparse.WhitespaceApi
     import fastparse.noApi._
 
@@ -46,88 +39,82 @@ object Parser {
     val White = WhitespaceApi.Wrapper(whitespace)
     import White._
 
-    val keywords = Set("fix", "fn", "case", "of", "else", "data", "let", "end", "rec", "unfold", "assert", "false", "true", "in")
+    val keywords = Set("fix", "fn", "match", "else", "data", "let", "end", "rec", "unfold", "assert", "false", "true", "in")
 
     val lowercase = P(CharIn('a' to 'z') | CharIn(Seq('_', 'α')))
     val uppercase = P(CharIn('A' to 'Z') | CharIn('0' to '9') | CharIn(Seq('\'')))
     val int: P[Int] = P((P(CharIn('1' to '9')) ~~ P(CharIn('0' to '9')).repX).!).map(Integer.parseInt(_))
+    val identifier: P[String] = P((uppercase | lowercase).repX(1).!).filter(name => !keywords.contains(name))
     val freshener: P[Int] = P("[" ~ int ~ "]")
+    val name: P[Name] = P(identifier ~ freshener.?)
+        .map { case (name, freshener) => Name(name, freshener) }
 
-    val varName: P[Name] = P(P(lowercase ~~ (uppercase | lowercase).repX).! ~ freshener.?)
-      .filter(n => !keywords.contains(n._1) || n._2.isDefined)
-      .map(n => Name(n._1, n._2))
-    val definitionName: P[String] = P((uppercase | lowercase).repX(1).!)
+    val fixIndex: P[Name] = P("[" ~ name ~ "]")
+    val caseIndex: P[Case.Index] = P(("[" ~ name ~ "]").?).map(_.map(Case.Index.fromName).getOrElse(Case.Index.fresh))
 
-    val definedTerm: P[Term] = P("." ~~ definitionName ~/).map(n => program.definitionOf(n))
-    val fixIndex: P[Name] = P("[" ~ varName ~ "]")
-    val caseIndex: P[Case.Index] = P(("[" ~ varName ~ "]").?).map(_.map(Case.Index.fromName).getOrElse(Case.Index.fresh))
+    val termVar: P[Term] = P(name)
+        .map { name =>
+          program.definitionOf(name.name) match {
+            case Some(defn) if name.freshener.isEmpty => defn
+            case _ => Var(name)
+          }
+        }
 
-    val termVar: P[Term] = P(varName).map(Var)
-    val simpleTerm: P[Term] = P(truth | falsity | bot | unfold | termVar | definedTerm | "(" ~ term ~ ")")
-    val unfold: P[Term] = P("unfold" ~/ definedTerm).map(_.unfold)
-    val fix: P[Fix] = P("fix" ~/ fixIndex.? ~ varName.rep(1) ~ "->" ~/ term)
-      .map(m => Fix(Lam(IList(m._2 : _*).toNel.get, m._3), m._1.map(Fix.finite).getOrElse(Fix.freshOmegaIndex)))
-    val lam: P[Term] = P("fn" ~/ varName.rep(1) ~ "->" ~/ term).map(m => Lam(IList(m._1 : _*), m._2))
-    val app: P[Term] = P(simpleTerm ~ simpleTerm.rep).map(m => m._1(m._2 : _*))
     val bot: P[Term] = P(("_|_" | "⊥") ~/).map(_ => Bot)
     val truth: P[Term] = P("true" ~/).map(_ => Logic.Truth)
     val falsity: P[Term] = P("false" ~/).map(_ => Logic.Falsity)
+
+    val unfold: P[Term] = P("unfold" ~/ term).map(_.unfold)
+    val fix: P[Fix] = P("fix" ~/ fixIndex.? ~ name.rep(1) ~/ term)
+      .map { case (idx, vars, body) =>
+        Fix(Lam(IList(vars: _*).toNel.get, body), idx.map(Fix.finite).getOrElse(Fix.freshOmegaIndex))
+      }
+    val lam: P[Term] = P("fun" ~/ name.rep(1) ~ term)
+      .map { case (vars, body) => Lam(IList(vars : _*), body) }
+    val app: P[Term] = P(term ~/ term.rep)
+      .map { case (func, args) => func.apply(IList(args: _*)) }
+
+    val lteq: P[Term] = P("=<" ~/ term ~/ term).map { case (left, right) => Leq(left, right) }
+    val gteq: P[Term] = P(">=" ~/ term ~/ term).map { case (left, right) => Leq(right, left) }
+    val and: P[Term] = P("&&" ~/ term ~/ term).map { case (left, right) => Logic.and(left, right) }
+    val eq: P[Term] = P("==" ~/ term ~/ term).map { case (left, right) => Logic.equality(left, right) }
+    val or: P[Term] = P("||" ~/ term ~/ term).map { case (left, right) => Logic.or(left, right) }
     val negation: P[Term] = P("!" ~/ term).map(Logic.not)
-    val binOp: P[BinOp] =
-      P("=<").map(_ => BinOp.Leq) |
-        P(">=").map(_ => BinOp.Geq) |
-        P("==").map(_ => BinOp.Eq) |
-        P("&&").map(_ => BinOp.And) |
-        P("||").map(_ => BinOp.Or)
-    val prop: P[Term] = P(app ~ binOp ~/ term).map { m =>
-      val left = m._1
-      val right = m._3
-      m._2 match {
-        case BinOp.Leq => Leq(left, right)
-        case BinOp.Geq => Leq(right, left)
-        case BinOp.Eq => Logic.equality(left, right)
-        case BinOp.And => Logic.and(left, right)
-        case BinOp.Or => Logic.or(left, right)
-      }
-    }
-    val assertion: P[Case] = P("assert" ~/ pattern ~ "<-" ~/ term ~ "in" ~/ term).map {
-      case (pattern, matchedTerm, branchTerm) =>
-        val branches = NonEmptyList[Branch](
-          PatternBranch(pattern, branchTerm),
-          DefaultBranch(Logic.Truth))
-        Case(matchedTerm, branches, Case.Index.fresh)
-    }
-    val caseOf: P[Case] = P("case" ~/ caseIndex ~ term ~ branch.rep(1) ~ "end" ~/).map(m => Case(m._2, IList(m._3 : _*).toNel.get, m._1))
-    val term: P[Term] = P(NoCut(prop) | negation | assertion | fix | lam | app | caseOf)
+    val prop: P[Term] = negation | lteq | gteq | and | eq | or
 
-    val pattern: P[Pattern] = P(definedTerm ~ varName.rep).map(m => Pattern(m._1.asInstanceOf[Constructor], IList(m._2 : _*)))
+    val caseOf: P[Case] = P("match" ~/ caseIndex ~ term ~ branch.rep(1)).map(m => Case(m._2, IList(m._3 : _*).toNel.get, m._1))
+    val nakedTerm: P[Term] = P(prop | fix | lam | app | caseOf | termVar | term)
+    val term: P[Term] = P(bot | truth | falsity | termVar | ("(" ~/ nakedTerm ~ ")" ~/))
 
-    val branch: P[Branch] = {
-      val defaultBranch: P[Branch] = P("else" ~/ "->" ~/ term).map(DefaultBranch)
-      val patternBranch: P[Branch] = P(pattern ~/ "->" ~/ term).map(m => PatternBranch(m._1, m._2))
-      P("|" ~/ (defaultBranch | patternBranch))
-    }
+    val pattern: P[Pattern] = P(name ~ name.rep)
+      .map(m => Pattern(m._1.asInstanceOf[Constructor], IList(m._2 : _*)))
 
-    val constructorDef: P[Constructor] = {
-      val typeArg: P[Boolean] = P("*").map(_ => true) | P("_").map(_ => false)
-      P(definitionName ~ typeArg.rep).map { m =>
-        val recArgs = m._2.indices.filter(i => m._2(i))
-        Constructor(Name(m._1), m._2.length, ISet.fromList(List(recArgs : _*)))
+    val branch: P[Branch] = P("(" ~/ pattern ~/ "->" ~/ nakedTerm ~ ")" ~/).map(m => PatternBranch(m._1, m._2))
+
+    def constructorDef: P[Constructor] = {
+      val typeArg: P[Boolean] = P("?").map(_ => false) | P(name).map(_ => true)  // TODO properly check that this is the name of the type we are defining
+      P("(" ~ identifier ~ typeArg.rep ~ ")").map {
+        case (name, tyArgs) =>
+          val recArgs = tyArgs.indices.filter(i => tyArgs(i))
+          Constructor(name, tyArgs.length, ISet.fromList(List(recArgs : _*)))
       }
     }
 
-    val data: P[Statement] = P("data" ~/ constructorDef).map(ConstructorDef)
+    val defdata: P[Statement] = P("(" ~ "defdata" ~/ identifier ~/ constructorDef.rep ~ ")" ~/)
+      .map { case (name, cons) => DataDef(name, cons) }
 
-    val letrec: P[Statement] = for {
-      (defName, vars, body) <- P("let" ~ "rec" ~/ definitionName ~ varName.rep ~ "=" ~/ term)
-    } yield TermDef(defName, Fix(Lam(NonEmptyList(Name(defName), vars: _*), body), Fix.freshOmegaIndex))
+    val defix: P[Statement] = P("(" ~ "defix" ~/ identifier ~/ name.rep ~ term ~ ")")
+        .map { case (name, vars, body) =>
+          TermDef(name, Fix(Lam(NonEmptyList(Name(name), vars: _*), body), Fix.freshOmegaIndex))
+        }
 
-    val let: P[Statement] = for {
-      (defName, vars, body) <- P("let" ~ definitionName ~ varName.rep ~ "=" ~/ term)
-    } yield TermDef(defName, Lam(IList(vars: _*), body))
+    val defun: P[Statement] = P("(" ~ "defun" ~ identifier ~/ name.rep ~ term ~ ")")
+        .map { case (name, vars, body) =>
+          TermDef(name, Lam(IList(vars: _*), body))
+        }
 
     val statement: P[Option[Statement]] =
-      P(whitespace ~ (P(data | letrec | let).map(Some(_)) | P(End).map(_ => None)))
+      P(whitespace ~ (P(defdata | defix | defun).map(Some(_)) | P(End).map(_ => None)))
   }
 
   /**

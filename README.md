@@ -1,2 +1,3 @@
-# hoverboard
-Supercompiler for theorem provers
+# Hoverboard - a supercompiler for theorem provers
+
+

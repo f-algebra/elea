@@ -37,7 +37,7 @@ package object hoverboard {
             arg.toString
         }
       val termDef = context.standardInterpolator(x => x, argStrings)
-      Parser.parseTerm(termDef) :/ termArgSubst
+      OldParser.parseTerm(termDef) :/ termArgSubst
     }
   }
 

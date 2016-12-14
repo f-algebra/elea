@@ -12,3 +12,7 @@ libraryDependencies += "org.scalacheck" %% "scalacheck"  % "1.12.5" % "test"
 libraryDependencies += "org.scalactic"  %% "scalactic"   % "2.2.6"
 libraryDependencies += "com.lihaoyi"    %% "scalaparse"  % "0.3.7"
 libraryDependencies += "org.scalaz"     %% "scalaz-core" % "7.2.2"
+
+// TODO move the HTTP server into a separate project
+libraryDependencies += "org.http4s"     %% "http4s-dsl"  % "0.15.0"
+libraryDependencies += "org.http4s"     %% "http4s-blaze-server" % "0.15.0"

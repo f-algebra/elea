@@ -7,8 +7,13 @@ import org.scalatest.prop.PropertyChecks
 
 class ParserTest extends FlatSpec with Matchers with PropertyChecks with TestConfig {
 
-  "term parsing" should "work" in {
+  "the old term parser" should "work" in {
     term"(fn x x -> f x) y z" shouldBe Lam("x", Lam("x", Var("f")(Var("x"))))(Var("y"), Var("z"))
+  }
+
+  "the new term parser" should "parse new-prelude.hover" in {
+    val prelude = Program.newPrelude
+    prelude.definitionOf("add") should not be empty
   }
 
   it should "have toString as a left identity" in {

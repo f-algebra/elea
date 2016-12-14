@@ -22,7 +22,7 @@ class SupercompilerTest extends TestConfig {
   // All properties in proven_properties.hover should pass
   Program
     .prelude
-    .loadURL(getClass.getResource("proven_properties.hover")).definitions
+    .loadURLOld(getClass.getResource("proven_properties.hover")).definitions
     .filterKeys(_.startsWith("prop"))
     .toSeq.sortBy(_._1)
     .foreach { case (propName, propTerm) =>
@@ -35,7 +35,7 @@ class SupercompilerTest extends TestConfig {
   // All properties in unprovable_properties.hover should fail because they are false
   Program
     .prelude
-    .loadURL(getClass.getResource("unprovable_properties.hover")).definitions
+    .loadURLOld(getClass.getResource("unprovable_properties.hover")).definitions
     .filterKeys(_.startsWith("prop"))
     .toSeq.sortBy(_._1)
     .foreach { case (propName, propTerm) =>
@@ -47,7 +47,7 @@ class SupercompilerTest extends TestConfig {
   // All properties in unproven_properties.hover should fail, but if they ever pass it's a good thing!
   Program
     .prelude
-    .loadURL(getClass.getResource("unproven_properties.hover")).definitions
+    .loadURLOld(getClass.getResource("unproven_properties.hover")).definitions
     .filterKeys(_.startsWith("prop"))
     .toSeq.sortBy(_._1)
     .foreach { case (propName, propTerm) =>

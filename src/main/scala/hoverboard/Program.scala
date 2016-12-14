@@ -17,9 +17,14 @@ class Program(val definitions: Map[String, Term]) {
   def definitionOf(name: String): Option[Term] =
     definitions.get(name)
 
-  def loadURL(url: URL): Program = {
+  def loadURLOld(url: URL): Program = {
     val text = Source.fromURL(url).mkString
     OldParser.parseAll(text)(_.modifyTerm(_.reduce))(this)
+  }
+
+  def loadURL(url: URL): Program = {
+    val text = Source.fromURL(url).mkString
+    Parser.parseAll(text)(_.modifyTerm(_.reduce))(this)
   }
 }
 
@@ -30,5 +35,8 @@ object Program {
   val empty = Program(Map.empty)
 
   lazy val prelude: Program =
-    Program.empty.loadURL(getClass.getResource("prelude.hover"))
+    Program.empty.loadURLOld(getClass.getResource("prelude.hover"))
+
+  lazy val newPrelude: Program =
+    Program.empty.loadURL(getClass.getResource("new-prelude.hover"))
 }

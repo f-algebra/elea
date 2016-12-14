@@ -1,0 +1,18 @@
+
+(defdata Bool
+    (True)
+    (False))
+
+(defdata Nat
+    (Zero)
+    (Suc Nat))
+
+(defdata List
+    (Nil)
+    (Cons ? List))
+
+(defun add n m
+    (match n
+        (Zero -> m)
+        (Suc n' -> Suc (add n' m))))
+        

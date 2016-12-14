@@ -6,5 +6,7 @@ Todo:
     HTTP interface
     Command line interface
     New lisp-style syntax for input + output
-
-
+    count-insert infinite loop?
+    flags:
+        total-mode
+        strict-mode

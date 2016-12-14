@@ -8,7 +8,7 @@ import scalaz.Scalaz.intInstance
 /**
   * Parses our lisp-style untyped lambda calculus with fixed-points and algebraic data-types
   */
-class Parser {
+object Parser {
   sealed trait Statement {
     def apply(program: Program): Program
   }
@@ -86,7 +86,7 @@ class Parser {
     val nakedTerm: P[Term] = P(prop | fix | lam | app | caseOf | termVar | term)
     val term: P[Term] = P(bot | truth | falsity | termVar | ("(" ~/ nakedTerm ~ ")" ~/))
 
-    val pattern: P[Pattern] = P(name ~ name.rep)
+    val pattern: P[Pattern] = P(termVar ~ name.rep)
       .map(m => Pattern(m._1.asInstanceOf[Constructor], IList(m._2 : _*)))
 
     val branch: P[Branch] = P("(" ~/ pattern ~/ "->" ~/ nakedTerm ~ ")" ~/).map(m => PatternBranch(m._1, m._2))
@@ -103,18 +103,13 @@ class Parser {
     val defdata: P[Statement] = P("(" ~ "defdata" ~/ identifier ~/ constructorDef.rep ~ ")" ~/)
       .map { case (name, cons) => DataDef(name, cons) }
 
-    val defix: P[Statement] = P("(" ~ "defix" ~/ identifier ~/ name.rep ~ term ~ ")")
+    val defun: P[Statement] = P("(" ~ "defun" ~/ identifier ~/ name.rep ~ term ~ ")")
         .map { case (name, vars, body) =>
           TermDef(name, Fix(Lam(NonEmptyList(Name(name), vars: _*), body), Fix.freshOmegaIndex))
         }
 
-    val defun: P[Statement] = P("(" ~ "defun" ~ identifier ~/ name.rep ~ term ~ ")")
-        .map { case (name, vars, body) =>
-          TermDef(name, Lam(IList(vars: _*), body))
-        }
-
     val statement: P[Option[Statement]] =
-      P(whitespace ~ (P(defdata | defix | defun).map(Some(_)) | P(End).map(_ => None)))
+      P(whitespace ~ (P(defdata | defun).map(Some(_)) | P(End).map(_ => None)))
   }
 
   /**

@@ -17,7 +17,7 @@ Here're some terms in fixed-point promoted form:
     (add x y)
     (reverse xs)
     
-Here're some terms **ngiot** in fixed-point promoted form:
+Here're some terms **not** in fixed-point promoted form:
 
     (add (add x y) z)  ;; one argument is not a variable, it's a function call1
     (add x x)          ;; the x argument is repeated

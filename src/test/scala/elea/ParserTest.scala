@@ -11,7 +11,7 @@ class ParserTest extends FlatSpec with Matchers with PropertyChecks with TestCon
     term"(fn x x -> f x) y z" shouldBe Lam("x", Lam("x", Var("f")(Var("x"))))(Var("y"), Var("z"))
   }
 
-  "the new term parser" should "parse new-prelude.hover" in {
+  "the new term parser" should "parse new-prelude.elea" in {
     val prelude = Program.newPrelude
     prelude.definitionOf("add") should not be empty
   }

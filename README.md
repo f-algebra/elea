@@ -22,12 +22,12 @@ Here're some terms **not** in fixed-point promoted form:
     (add (add x y) z)  ;; one argument is not a variable, it's a function call1
     (add x x)          ;; the x argument is repeated
 
-Hoverboard can rewrite terms such as those above, for example:
+Elea can rewrite terms such as those above, for example:
 
     >>> (reverse (reverse xs))
     xs
 
-In the above example, Hoverboard is able to rewrite the term `reverse (reverse xs)` to just `xs`,
+In the above example, Elea is able to rewrite the term `reverse (reverse xs)` to just `xs`,
 removing the recursion entirely.
 
 ## Why do I need a supercompiler?
@@ -37,23 +37,23 @@ If you've ever thought:
  "I wish I could integrate automated proof by (fixed-point) (co-)induction 
  into my theorem prover, but it seems like a lot of effort."
 
-then *Hoverboard* is the tool for you!
+then *Elea* is the tool for you!
 
 Rewriting your functional language terms into fixed-point promoted form means that you (often) don't need
 automated proof by induction, co-induction, or any of the other cyclic, second-order proof techniques
-to prove your properties. In the next few sections we give examples of how using Hoverboard to
+to prove your properties. In the next few sections we give examples of how using Elea to
 supercompile your terms can remove the need for cyclic techniques.
 
 
-## Proving equations using Hoverboard
+## Proving equations using Elea
 
 
 
 
 
-### Proving `A = B` with the help of Hoverboard
+### Proving `A = B` with the help of Elea
 
-Let's say you want to prove `A = B`, for some terms `A` and `B`. You can run Hoverboard on the 
+Let's say you want to prove `A = B`, for some terms `A` and `B`. You can run Elea on the 
 `A` term, hopefully rewriting `A` to something in fixed-point promoted form, viz. something of the 
 shape `((fix f C[f]) x1 x2 ... xn)` where `F[_]` is a term context, and `x1` to `xn` 
 are the free variables of `A`. So our property is now:
@@ -75,10 +75,10 @@ That's how it works for equality, but you can also show other types of property,
 in-equalities, as shown in the next section.
 
 
-### Proving `A < B` with the help of Hoverboard
+### Proving `A < B` with the help of Elea
 
 Let's say `A` and `B` are terms of integer type, and we'd like to prove `A < B`. 
-As in the previous section, we run Hoverboard on `A`, hopefully giving aN equivalent term of the shape
+As in the previous section, we run Elea on `A`, hopefully giving aN equivalent term of the shape
 `((fix f C[f]) x1 x2 ... xn)`. 
 
 
@@ -96,12 +96,12 @@ for any chain-complete property, e.g. equality, or numerical in-equality.
 
 ### Total mode vs. partial mode
 
-The default functional language that Hoverboard supercompiles is partial, meaning that functions can fail to terminate, 
+The default functional language that Elea supercompiles is partial, meaning that functions can fail to terminate, 
 and that variables can contain `_|_`. 
 However, if you require supercompilation of a total language, you can add `(mode total)` to the top of your 
-program in order to switch Hoverboard to total mode. In total mode, all functions are assumed to be terminating and all
-free variables are assumed to not contain `_|_`. Hoverboard does *not* check totality for you - if you give it a non-total
-function and switch total mode on, Hoverboard no longer guarantees semantics preserving transformations.
+program in order to switch Elea to total mode. In total mode, all functions are assumed to be terminating and all
+free variables are assumed to not contain `_|_`. Elea does *not* check totality for you - if you give it a non-total
+function and switch total mode on, Elea no longer guarantees semantics preserving transformations.
 
 For example, let's try to simplify the term `add x x`, first in the default partial mode, then in total mode.
 
@@ -129,12 +129,12 @@ In this example, the term `add x x` term was able to be simplified
 ### Call-by-value vs. call-by-name
 <a name="cbv-vs-cbn"></a>
 
-So far, Hoverboard has only been proven sound for call-by-name semantics 
+So far, Elea has only been proven sound for call-by-name semantics 
 Most programming languages are call-by-value, meaning function arguments are evaluated 
 to a value before they are passed to the function. 
-The default mode for Hoverboard is call-by-value semantics.
+The default mode for Elea is call-by-value semantics.
 However, if you are proving properties of a call-by-name or call-by-need language, like Haskell, you can switch
-Hoverboard to call-by-name mode by adding the declaration `(semantics call-by-name)` to your code.
+Elea to call-by-name mode by adding the declaration `(semantics call-by-name)` to your code.
 
 For example:
 -->

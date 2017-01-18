@@ -15,8 +15,8 @@ object CLI {
 
   val programVersion = getClass.getPackage.getImplementationVersion
 
-  val configParser = new OptionParser[Config]("hoverboard") {
-    head(s"hoverboard $programVersion - a supercompiler for theorem provers")
+  val configParser = new OptionParser[Config]("elea") {
+    head(s"elea $programVersion - a supercompiler for theorem provers")
 
     opt[Unit]('s', "stats")
       .action((_, config) => config.copy(recordStats = true))

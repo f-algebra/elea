@@ -19,39 +19,39 @@ class SupercompilerTest extends TestConfig {
     true shouldBe true
   }
 
-  // All properties in proven_properties.hover should pass
+  // All properties in proven_properties.elea should pass
   Program
     .prelude
-    .loadURLOld(getClass.getResource("proven_properties.hover")).definitions
+    .loadURLOld(getClass.getResource("proven_properties.elea")).definitions
     .filterKeys(_.startsWith("prop"))
     .toSeq.sortBy(_._1)
     .foreach { case (propName, propTerm) =>
-      it should s"prove $propName in proven_properties.hover" in {
+      it should s"prove $propName in proven_properties.elea" in {
         val propNameVar = propName
         scc.run(propTerm) shouldEqual Logic.Truth
       }
     }
 
-  // All properties in unprovable_properties.hover should fail because they are false
+  // All properties in unprovable_properties.elea should fail because they are false
   Program
     .prelude
-    .loadURLOld(getClass.getResource("unprovable_properties.hover")).definitions
+    .loadURLOld(getClass.getResource("unprovable_properties.elea")).definitions
     .filterKeys(_.startsWith("prop"))
     .toSeq.sortBy(_._1)
     .foreach { case (propName, propTerm) =>
-      it should s"fail to prove $propName in unprovable_properties.hover" in {
+      it should s"fail to prove $propName in unprovable_properties.elea" in {
         scc.run(propTerm) should not equal Logic.Truth
       }
     }
 
-  // All properties in unproven_properties.hover should fail, but if they ever pass it's a good thing!
+  // All properties in unproven_properties.elea should fail, but if they ever pass it's a good thing!
   Program
     .prelude
-    .loadURLOld(getClass.getResource("unproven_properties.hover")).definitions
+    .loadURLOld(getClass.getResource("unproven_properties.elea")).definitions
     .filterKeys(_.startsWith("prop"))
     .toSeq.sortBy(_._1)
     .foreach { case (propName, propTerm) =>
-      it should s"fail to prove $propName in unproven_properties.hover" in {
+      it should s"fail to prove $propName in unproven_properties.elea" in {
         scc.run(propTerm) should not equal Logic.Truth
       }
     }

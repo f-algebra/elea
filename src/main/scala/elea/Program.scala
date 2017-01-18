@@ -35,8 +35,8 @@ object Program {
   val empty = Program(Map.empty)
 
   lazy val prelude: Program =
-    Program.empty.loadURLOld(getClass.getResource("prelude.hover"))
+    Program.empty.loadURLOld(getClass.getResource("prelude.elea"))
 
   lazy val newPrelude: Program =
-    Program.empty.loadURL(getClass.getResource("new-prelude.hover"))
+    Program.empty.loadURL(getClass.getResource("new-prelude.elea"))
 }

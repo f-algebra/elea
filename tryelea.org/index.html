@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Hoverboard - a supercompiler for theorem provers</title>
+    <title>Elea - a supercompiler for theorem provers</title>
     <script src="js/jquery-3.1.1.min.js" type="text/javascript"></script>
     <script type="text/javascript">
         function loadExample(name) {
-            var exampleText = $.get("examples/" + name + ".hover");
+            var exampleText = $.get("examples/" + name + ".elea");
             $(".program-text").html(exampleText);
         }
 
@@ -17,7 +17,20 @@
 </head>
 <body>
 <form method="get" action="run.php">
-    <textarea id="program-text"></textarea>
+    <textarea id="program-text">
+(defdata List (Nil) (Cons ? List))
+(defun append xs ys
+    (match xs
+        (Nil -> ys)
+        (Cons x xs' -> Cons x (append xs' ys))))
+(defun reverse xs
+    (match xs
+        (Nil -> Nil)
+        (Cons x xs' -> append (reverse xs') (Cons x Nil))))
+
+(defun rev-rev xs
+    (reverse (reverse xs)))
+    </textarea>
     <br/>
     <input type="submit" value="Supercompile"/>
 </form>

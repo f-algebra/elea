@@ -1,5 +1,5 @@
 /*
-Properties which are true, but which hoverboard cannot prove yet.
+Properties which are true, but which elea cannot prove yet.
 I run them through my unit tests so I can catch when I add the power to successfully prove them.
 */
 

@@ -3,9 +3,7 @@ and you end up with a pattern match on "n - m". Again, the f/g function notation
 
 Todo:
     README.md
-    HTTP interface
     Command line interface
-    New lisp-style syntax for input + output
     count-insert infinite loop?
     flags:
         total-mode

@@ -15,7 +15,7 @@ case class App private(fun: Term, args: NonEmptyList[Term]) extends Term with Fi
     * Print the lisp representation of this code
     */
   override def toLisp(settings: LispPrintSettings): String =
-    s"(${fun.toLisp(settings)}${args.toList.map(_.toLisp(settings)).mkString(" ", " ", "")}"
+    s"(${fun.toLisp(settings)}${args.toList.map(_.toLisp(settings)).mkString(" ", " ", "")})"
 
   override def reduceHead(env: Env): Term = {
     val reduced = fun.reduceHeadApp(env, args)

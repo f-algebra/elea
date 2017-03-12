@@ -70,7 +70,7 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
       branches = branches.map(_.mapImmediateSubtermsWithBindings(f)))
 
   override def toLisp(settings: LispPrintSettings) = {
-    s"(case${if (settings.showCaseIndices) s"[$index]" else ""} $matchedTerm ${branches.map("\n" + _.toLisp(settings)).concatenate})".indent
+    s"(case${if (settings.showCaseIndices) s"[$index]" else ""} $matchedTerm${branches.map(_.toLisp(settings).indentNewBlock).concatenate})".indentNewBlock
   }
 
   def zip(other: Term): Option[IList[(Term, Term)]] = {

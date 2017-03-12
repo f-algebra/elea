@@ -4,9 +4,7 @@ import scalaz.{IList, NonEmptyList, ISet}
 
 object Logic {
   val Truth: Term = Bot
-  val Falsity: Constructor = new Constructor("false", argumentCount = 0, recursiveArgs = ISet.empty) {
-    override def toString = "false"
-  }
+  val Falsity: Constructor = new Constructor("false", argumentCount = 0, recursiveArgs = ISet.empty)
 
   def equality(leftTerm: Term, rightTerm: Term): Term =
     and(leftTerm =< rightTerm, rightTerm =< leftTerm)

@@ -69,10 +69,8 @@ case class Case(matchedTerm: Term, branches: NonEmptyList[Branch], index: Case.I
     copy(matchedTerm = f(ISet.empty, matchedTerm),
       branches = branches.map(_.mapImmediateSubtermsWithBindings(f)))
 
-  override def toString = {
-    (s"\ncase[$index] $matchedTerm" +
-      branches.map("\n" + _.toString).concatenate +
-      "\nend").indent
+  override def toLisp(settings: LispPrintSettings) = {
+    s"(case${if (settings.showCaseIndices) s"[$index]" else ""} $matchedTerm ${branches.map("\n" + _.toLisp(settings)).concatenate})".indent
   }
 
   def zip(other: Term): Option[IList[(Term, Term)]] = {

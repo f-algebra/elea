@@ -2,6 +2,7 @@ package elea
 
 import java.io.File
 
+import elea.Parser.{DataDef, StatementHandler, TermDef}
 import elea.rewrite.Simplifier
 import scopt.OptionParser
 
@@ -16,34 +17,30 @@ object CLI {
   val programVersion = getClass.getPackage.getImplementationVersion
 
   val configParser = new OptionParser[Config]("elea") {
-    head(s"elea $programVersion - a supercompiler for theorem provers")
+    head(s"Elea v$programVersion - a supercompiler for theorem provers")
 
     opt[Unit]('s', "stats")
       .action((_, config) => config.copy(recordStats = true))
       .text("print out performance statistics in comments")
 
-    opt[File]('i', "input-file")
+    opt[File]('f', "input-file")
         .action((file, config) => config.copy(fromFile = Some(file)))
   }
 
   val supercompiler = Simplifier.supercompilation
 
-  def main(args: Array[String]): Unit = {
-    val input = io.Source.stdin.getLines.mkString
-    val config = configParser
-        .parse(args, Config())
-        .getOrElse(throw new IllegalArgumentException("Bad command line parameters"))
-    run(config, input)
-  }
+  class CLIStatementHandler(config: Config) extends StatementHandler {
+    override def dataDef(dataDef: DataDef): DataDef = {
+      println(dataDef.toLisp())
+      dataDef
+    }
 
-  def run(config: Config, inputProgram: String): Unit = {
-    implicit val startingProgram = Program.empty
-    Parser.parseAll(inputProgram) { termDef =>
+    override def termDef(termDef: TermDef): TermDef = {
       val startTime = System.nanoTime()
       val simplifiedDef = termDef.modifyTerm(supercompiler.run)
       val finishTime = System.nanoTime()
 
-      println(simplifiedDef.toString)
+      println(simplifiedDef.toLisp())
 
       if (config.recordStats) {
         val timeTakenMillis = (finishTime - startTime) / (1000 * 1000)
@@ -52,5 +49,20 @@ object CLI {
 
       simplifiedDef
     }
+  }
+
+  def main(args: Array[String]): Unit = {
+    val config = configParser
+        .parse(args, Config())
+        .getOrElse(throw new IllegalArgumentException("Bad command line parameters"))
+    require(config.fromFile.isDefined, "Please provide an input file")
+    val input = io.Source.fromFile(config.fromFile.get).mkString
+    run(config, input)
+  }
+
+  def run(config: Config, inputProgram: String): Unit = {
+    implicit val startingProgram = Program.empty
+    val handler = new CLIStatementHandler(config)
+    Parser.parseAll(inputProgram, handler)
   }
 }

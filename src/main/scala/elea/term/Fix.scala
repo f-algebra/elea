@@ -1,6 +1,6 @@
 package elea.term
 
-import elea.Name
+import elea.{LispPrintSettings, Name}
 import elea.rewrite.Env
 
 import scalaz.Ordering.{EQ, GT, LT}
@@ -93,10 +93,10 @@ case class Fix(body: Term,
       Fix(newBody, index)
   }
 
-  override def toString: String =
+  override def toLisp(settings: LispPrintSettings): String =
     name.map(n => Name.asDefinition(n) + index.toString).getOrElse {
       val (bindings, innerBody) = body.flattenLam
-      s"fix$index ${bindings.toList.mkString(" ")} -> $innerBody"
+      s"(fix$index ${bindings.toList.mkString(" ")} $innerBody)"
     }
 
   override def withName(name: String) =

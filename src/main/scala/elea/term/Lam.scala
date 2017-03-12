@@ -71,10 +71,9 @@ case class Lam(binding: Name, body: Term) extends Term {
     (NonEmptyList.nel(binding, bindings), innerBody)
   }
 
-  override def toString = {
+  override def toLisp(settings: LispPrintSettings) = {
     val (bindings, body) = flattenLam
-    "fn " + bindings.map(_.toString + " ").concatenate +
-      "-> " + body.toString
+    s"(fun ${bindings.toList.map(_.toString).mkString(" ")} ${body.toLisp(settings)})"
   }
 
   def arbitraryOrderingNumber: Int = 5

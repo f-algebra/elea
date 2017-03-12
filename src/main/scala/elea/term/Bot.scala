@@ -1,5 +1,6 @@
 package elea.term
 
+import elea.LispPrintSettings
 import elea.rewrite.Env
 
 import scalaz.NonEmptyList
@@ -9,7 +10,7 @@ case object Bot extends Atom {
 
   override def reduceHeadCase(env: Env, enclosingCase: Case): Term = this
 
-  override def toString = "⊥"
+  override def arbitraryOrderingNumber: Int = 1
 
-  def arbitraryOrderingNumber: Int = 1
+  override def toLisp(settings: LispPrintSettings): String = "⊥"
 }

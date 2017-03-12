@@ -1,6 +1,6 @@
 package elea.term
 
-import elea.Name
+import elea.{LispPrintSettings, Name}
 import elea.rewrite.Env
 
 import scalaz.Scalaz._
@@ -10,6 +10,12 @@ case class App private(fun: Term, args: NonEmptyList[Term]) extends Term with Fi
   require(!fun.isInstanceOf[App])
 
   override def apply(args2: IList[Term]) = App(fun, args :::> args2)
+
+  /**
+    * Print the lisp representation of this code
+    */
+  override def toLisp(settings: LispPrintSettings): String =
+    s"(${fun.toLisp(settings)}${args.toList.map(_.toLisp(settings)).mkString(" ", " ", "")}"
 
   override def reduceHead(env: Env): Term = {
     val reduced = fun.reduceHeadApp(env, args)
@@ -43,12 +49,6 @@ case class App private(fun: Term, args: NonEmptyList[Term]) extends Term with Fi
 
   def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Term =
     App(f(ISet.empty, fun), args.map(t => f(ISet.empty, t)).list)
-
-  override def toString = {
-    def bracketIfNeeded(str: String) =
-      if (str.contains(" ")) s"($str)" else str
-    (fun <:: args).map(t => bracketIfNeeded(t.toString)).intercalate(" ")
-  }
 
   def zip(other: Term): Option[IList[(Term, Term)]] =
     other match {

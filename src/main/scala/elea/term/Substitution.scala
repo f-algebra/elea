@@ -1,6 +1,6 @@
 package elea.term
 
-import elea.Name
+import elea.{LispPrintSettings, Name}
 
 import scalaz.{Name => _, _}
 import Scalaz._
@@ -88,7 +88,7 @@ class Substitution private (mapping: IMap[Name, Term]) extends FirstOrder[Substi
 
   override def arbitraryOrderingNumber: Int = 1
 
-  override def toString =
+  override def toLisp(settings: LispPrintSettings) =
     toMap.toList.map { case (x, t) => s"$x -> $t" } .mkString("\n")
 
   override def hashCode: Int = toMap.hashCode

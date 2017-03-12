@@ -26,7 +26,7 @@ case class Constructor(name: Name, argumentCount: Int, recursiveArgs: ISet[Int])
         .reduce(env.havingSeen(enclosingCase))
     }
 
-  override def toString = Name.asDefinition(name.toString)
+  override def toLisp(settings: LispPrintSettings) = name.toString
 
   def arbitraryOrderingNumber: Int = 4
 
@@ -43,4 +43,7 @@ case class Constructor(name: Name, argumentCount: Int, recursiveArgs: ISet[Int])
       case other: Constructor => name ?|? other.name
       case _ => arbitraryOrderingNumber ?|? other.arbitraryOrderingNumber
     }
+
+  def toDefinitionLisp(typeName: String): String =
+    s"($name${0.until(argumentCount).map(i => if (recursiveArgs.contains(i)) typeName else "?").mkString(" ", " ", "")})"
 }

@@ -8,10 +8,10 @@ sealed trait Statement {
   def apply(program: Program): Program
 }
 
-case class TermDef(name: String, term: Term) extends Statement {
+case class OldTermDef(name: String, term: Term) extends Statement {
   def apply(program: Program) = program + (name -> term.withName(name))
 
-  def modifyTerm(f: Term => Term): TermDef =
+  def modifyTerm(f: Term => Term): OldTermDef =
     copy(term = f(term))
 }
 
@@ -120,11 +120,11 @@ object OldParser {
 
     val letrec: P[Statement] = for {
       (defName, vars, body) <- P("let" ~ "rec" ~/ definitionName ~ varName.rep ~ "=" ~/ term)
-    } yield TermDef(defName, Fix(Lam(NonEmptyList(Name(defName), vars: _*), body), Fix.freshOmegaIndex))
+    } yield OldTermDef(defName, Fix(Lam(NonEmptyList(Name(defName), vars: _*), body), Fix.freshOmegaIndex))
 
     val let: P[Statement] = for {
       (defName, vars, body) <- P("let" ~ definitionName ~ varName.rep ~ "=" ~/ term)
-    } yield TermDef(defName, Lam(IList(vars: _*), body))
+    } yield OldTermDef(defName, Lam(IList(vars: _*), body))
 
     val statement: P[Option[Statement]] =
       P(whitespace ~ (P(data | letrec | let).map(Some(_)) | P(End).map(_ => None)))
@@ -145,11 +145,11 @@ object OldParser {
     * Parses statements one by one from a string
     * @return Successive [[Program]] objects after each statement has been loaded.
     */
-  def parseAll(text: String)(termHandler: TermDef => TermDef)(implicit program: Program): Program =
+  def parseAll(text: String)(termHandler: OldTermDef => OldTermDef)(implicit program: Program): Program =
     Scalaz.unfold((text, program)) { case (text, program) =>
       parseStatement(text)(program).map { case (stmt, remaining) =>
         val newProgram = stmt match {
-          case stmt: TermDef => termHandler(stmt)(program)
+          case stmt: OldTermDef => termHandler(stmt)(program)
           case _ => stmt(program)
         }
         (newProgram, (remaining, newProgram))

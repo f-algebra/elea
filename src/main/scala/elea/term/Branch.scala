@@ -1,6 +1,6 @@
 package elea.term
 
-import elea.Name
+import elea.{LispPrintSettings, Name}
 import elea.rewrite.Env
 
 import scalaz.{Name => _, _}
@@ -63,8 +63,8 @@ case class DefaultBranch(body: Term) extends Branch with FirstOrder[Branch] {
 
   def capturedVars = ISet.empty[Name]
 
-  override def toString =
-    "| else -> " + body.toString
+  override def toLisp(settings: LispPrintSettings) =
+    s"(else -> ${body.toLisp(settings)})"
 
   def zip(other: Branch): Option[IList[(Term, Term)]] =
     other match {
@@ -152,8 +152,8 @@ case class PatternBranch(pattern: Pattern, body: Term) extends Branch {
 
   def capturedVars = pattern.bindingsSet
 
-  override def toString =
-    "| " + pattern.toString + " -> " + body.toString
+  override def toLisp(settings: LispPrintSettings) =
+    s"($pattern -> ${body.toLisp(settings)})"
 
   def zip(other: Branch): Option[IList[(Term, Term)]] =
     other match {

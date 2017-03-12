@@ -1,6 +1,6 @@
 package elea.term
 
-import elea.Name
+import elea.{LispPrintSettings, Name}
 import elea.rewrite.Env
 
 import scalaz.{Name => _, _}
@@ -25,7 +25,7 @@ case class Var(name: Name) extends Term {
 
   override def mapImmediateSubtermsWithBindings(f: (ISet[Name], Term) => Term): Term = this
 
-  override def toString = name.toString
+  override def toLisp(settings: LispPrintSettings) = name.toString
 
   def zip(other: Term): Option[IList[(Term, Term)]] =
     other match {

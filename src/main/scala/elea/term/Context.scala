@@ -1,6 +1,6 @@
 package elea.term
 
-import elea.Name
+import elea.{LispPrintSettings, Name}
 
 import scalaz.{Name => _, _}
 import Scalaz._
@@ -48,7 +48,7 @@ final case class Context private(gap: Name, context: Term) extends TermLike[Cont
       Some(stripped)
   }
 
-  override def toString = apply(Var("_")).toString
+  override def toLisp(settings: LispPrintSettings) = apply(Var("_")).toString
 
   def composeWith(inner: Context): Context =
     C(gap => this(inner(Var(gap))))

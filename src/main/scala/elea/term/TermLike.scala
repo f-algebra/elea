@@ -1,6 +1,6 @@
 package elea.term
 
-import elea.Name
+import elea.{LispRepresentable, Name}
 
 import scalaz.Ordering.EQ
 import scalaz.{Name => _, _}
@@ -10,7 +10,7 @@ import Scalaz._
   * Common functionality between [[Term]]s and things which contain them,
   * e.g. [[elea.term.Branch]]
   */
-abstract class TermLike[This <: TermLike[This]] {
+abstract class TermLike[This <: TermLike[This]] extends LispRepresentable {
   lazy val freeVars: ISet[Name] =
     ISet.unions(immediateSubtermsWithBindings.map { case (bs, t) => t.freeVars.difference(bs) }.toList)
 
@@ -186,4 +186,6 @@ abstract class TermLike[This <: TermLike[This]] {
     * Replace all [[Case.Index]] and [[Fix.Index]] with fresh ones. Used after reading a term definition.
     */
   def freshenIndices: This = mapImmediateSubterms(_.freshenIndices)
+
+  override def toString = toLisp()
 }

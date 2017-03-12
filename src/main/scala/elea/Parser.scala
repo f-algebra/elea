@@ -9,8 +9,18 @@ import scalaz.{IList, ISet, NonEmptyList, Scalaz}
   * Parses our lisp-style untyped lambda calculus with fixed-points and algebraic data-types
   */
 object Parser {
-  sealed trait Statement {
+  sealed trait Statement extends LispRepresentable {
     def apply(program: Program): Program
+  }
+
+  trait StatementHandler {
+    def termDef(termDef: TermDef): TermDef
+    def dataDef(dataDef: DataDef): DataDef
+  }
+
+  object ReducingHandler extends StatementHandler {
+    override def termDef(termDef: TermDef): TermDef = termDef.modifyTerm(_.reduce)
+    override def dataDef(dataDef: DataDef): DataDef = dataDef
   }
 
   case class TermDef(name: String, term: Term) extends Statement {
@@ -19,13 +29,18 @@ object Parser {
     def modifyTerm(f: Term => Term): TermDef =
       copy(term = f(term))
 
-    override def toString: String =
-      s"(defun $name ${term.toString.indent})"
+    override def toLisp(settings: LispPrintSettings): String = {
+      val (vars, body) = term.flattenLam
+      s"(defun $name ${vars.toList.map(_.toString).mkString(" ")} ${body.toLisp(settings)})"
+    }
   }
 
   case class DataDef(name: String, constructors: Seq[Constructor]) extends Statement {
     def apply(program: Program) =
       program ++ constructors.map(c => c.name.toString -> c)
+
+    override def toLisp(settings: LispPrintSettings): String =
+      s"(defdata $name${constructors.map(_.toDefinitionLisp(name)).mkString(" ", " ", "")})"
   }
 
 
@@ -42,7 +57,7 @@ object Parser {
     val White = WhitespaceApi.Wrapper(whitespace)
     import White._
 
-    val keywords = Set("fix", "fn", "match", "else", "data", "let", "end", "rec", "unfold", "assert", "false", "true", "in")
+    val keywords = Set("fix", "fun", "match", "else", "data", "let", "end", "rec", "unfold", "assert", "false", "true", "in")
 
     val lowercase = P(CharIn('a' to 'z') | CharIn(Seq('_', 'α')))
     val uppercase = P(CharIn('A' to 'Z') | CharIn('0' to '9') | CharIn(Seq('\'')))
@@ -130,12 +145,12 @@ object Parser {
     * Parses statements one by one from a string.
     * @return the program with all statements loaded
     */
-  def parseAll(text: String)(termHandler: TermDef => TermDef)(implicit program: Program): Program =
+  def parseAll(text: String, handler: StatementHandler = ReducingHandler)(implicit program: Program): Program =
     Scalaz.unfold((text, program)) { case (text, program) =>
       parseStatement(text)(program).map { case (stmt, remaining) =>
         val newProgram = stmt match {
-          case stmt: TermDef => termHandler(stmt)(program)
-          case _ => stmt(program)
+          case stmt: TermDef => handler.termDef(stmt)(program)
+          case stmt: DataDef => handler.dataDef(stmt)(program)
         }
         (newProgram, (remaining, newProgram))
       }

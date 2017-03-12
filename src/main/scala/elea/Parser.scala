@@ -39,8 +39,12 @@ object Parser {
     def apply(program: Program) =
       program ++ constructors.map(c => c.name.toString -> c)
 
-    override def toLisp(settings: LispPrintSettings): String =
-      s"(defdata $name${constructors.map(_.toDefinitionLisp(name)).mkString(" ", " ", "")})"
+    override def toLisp(settings: LispPrintSettings): String = {
+      val constructorDefs = constructors
+        .map(_.toDefinitionLisp(name).indentNewBlock)
+        .mkString
+      s"(defdata $name$constructorDefs)"
+    }
   }
 
 

@@ -18,11 +18,23 @@ class CLITest extends FlatSpec with Matchers {
         |        (Suc n' -> Suc (add n' m))))
       """.stripMargin
 
+    val expectedOutput =
+      """
+        |(defdata Nat
+        |     (Zero)
+        |     (Suc Nat))
+        |(defun add n m
+        |   (fix add n
+        |     (match n
+        |       (Zero -> m)
+        |       (Suc n' -> Suc (add n')))) n)
+      """.stripMargin
+
     val stdout = new ByteArrayOutputStream
     Console.withOut(stdout) {
       CLI.run(CLI.Config(), testProgram)
     }
     val output = stdout.toString
-    print(output)
+    output shouldEqual expectedOutput
   }
 }

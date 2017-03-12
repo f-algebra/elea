@@ -45,5 +45,5 @@ case class Constructor(name: Name, argumentCount: Int, recursiveArgs: ISet[Int])
     }
 
   def toDefinitionLisp(typeName: String): String =
-    s"($name${0.until(argumentCount).map(i => if (recursiveArgs.contains(i)) typeName else "?").mkString(" ", " ", "")})"
+    s"($name${0.until(argumentCount).map(i => if (recursiveArgs.contains(i)) s" $typeName" else " ?").mkString})"
 }

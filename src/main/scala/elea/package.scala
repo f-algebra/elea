@@ -16,6 +16,7 @@ package object elea {
 
   implicit class WrappedString(string: String) {
     def indent: String = string.replace("\n", "\n  ")
+    def indentNewBlock: String = s"\n$string".indent
   }
 
   implicit class WrappedStringContext(context: StringContext)(implicit program: Program) {

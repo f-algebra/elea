@@ -15,9 +15,10 @@ object CLI {
     fromFile: Option[File] = None)
 
   val programVersion = getClass.getPackage.getImplementationVersion
+  val manifesto = s"Elea v$programVersion - a supercompiler for theorem provers"
 
   val configParser = new OptionParser[Config]("elea") {
-    head(s"Elea v$programVersion - a supercompiler for theorem provers")
+    head(manifesto)
 
     opt[Unit]('s', "stats")
       .action((_, config) => config.copy(recordStats = true))
@@ -57,7 +58,11 @@ object CLI {
         .getOrElse(throw new IllegalArgumentException("Bad command line parameters"))
     require(config.fromFile.isDefined, "Please provide an input file")
     val input = io.Source.fromFile(config.fromFile.get).mkString
+    println(s";; $manifesto")
+    val startTime = System.currentTimeMillis()
     run(config, input)
+    val timeTakenMillis = System.currentTimeMillis() - startTime
+    println(s";; finished (took ${timeTakenMillis}ms)")
   }
 
   def run(config: Config, inputProgram: String): Unit = {

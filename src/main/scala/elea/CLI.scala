@@ -58,16 +58,16 @@ object CLI {
         .getOrElse(throw new IllegalArgumentException("Bad command line parameters"))
     require(config.fromFile.isDefined, "Please provide an input file")
     val input = io.Source.fromFile(config.fromFile.get).mkString
-    println(s";; $manifesto")
-    val startTime = System.currentTimeMillis()
     run(config, input)
-    val timeTakenMillis = System.currentTimeMillis() - startTime
-    println(s";; finished (took ${timeTakenMillis}ms)")
   }
 
   def run(config: Config, inputProgram: String): Unit = {
     implicit val startingProgram = Program.empty
     val handler = new CLIStatementHandler(config)
+    println(s";; $manifesto")
+    val startTime = System.currentTimeMillis()
     Parser.parseAll(inputProgram, handler)
+    val timeTakenMillis = System.currentTimeMillis() - startTime
+    println(s";; finished (took ${timeTakenMillis}ms)")
   }
 }
